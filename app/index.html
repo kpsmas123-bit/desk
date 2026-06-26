@@ -332,6 +332,17 @@
   .login-hint { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); line-height: 1.5; }
   .login-check { color: var(--ink); font-size: 14.5px; line-height: 1.55; }
   .login-check-big { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .login-error {
+    font-family: var(--font-sans); font-size: 13px; line-height: 1.45; color: #8a3a10;
+    background: var(--live-wash); border: 1px solid #f2c3a3; border-radius: 12px; padding: 9px 12px;
+  }
+  .login-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .login-link {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13px; color: var(--accent);
+    background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .login-link:hover { text-decoration: underline; }
+  .login-link.muted { color: var(--muted); font-weight: 500; }
 
   /* ===== appearance sheet ===== */
   .sheet-backdrop {
@@ -465,11 +476,17 @@
 <div class="login" id="loginScreen">
   <div class="login-card">
     <div class="login-brand">Desk</div>
-    <div class="login-sub">Follow your nerdiest threads. Your private desk for the news you actually track — sign in with a magic link, no password.</div>
+    <div class="login-sub" id="loginSub">Follow your nerdiest threads. Sign in to your private desk.</div>
     <div id="loginForm">
       <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
-      <button class="btn primary" id="loginBtn">Send me a magic link</button>
-      <div class="login-hint" id="loginHint">We'll email you a one-tap sign-in link.</div>
+      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="btn primary" id="loginBtn">Sign in</button>
+      <div class="login-error" id="loginError" style="display:none"></div>
+      <div class="login-row">
+        <button class="login-link" id="loginToggle" type="button">Create account</button>
+        <button class="login-link muted" id="loginForgot" type="button">Forgot password?</button>
+      </div>
+      <div class="login-hint" id="loginHint" style="display:none">Use at least 6 characters for your password.</div>
     </div>
   </div>
 </div>
@@ -570,10 +587,15 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
   // ---- elements ----
   var loginScreen = document.getElementById('loginScreen');
-  var loginForm   = document.getElementById('loginForm');
-  var loginEmail  = document.getElementById('loginEmail');
-  var loginBtn    = document.getElementById('loginBtn');
-  var loginHint   = document.getElementById('loginHint');
+  var loginForm    = document.getElementById('loginForm');
+  var loginEmail   = document.getElementById('loginEmail');
+  var loginPassword= document.getElementById('loginPassword');
+  var loginBtn     = document.getElementById('loginBtn');
+  var loginError   = document.getElementById('loginError');
+  var loginToggle  = document.getElementById('loginToggle');
+  var loginForgot  = document.getElementById('loginForgot');
+  var loginHint    = document.getElementById('loginHint');
+  var loginSub     = document.getElementById('loginSub');
   var appRoot   = document.getElementById('appRoot');
   var navEl     = document.getElementById('nav');
   var subnavEl  = document.getElementById('subnav');
@@ -816,36 +838,128 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   syncSheet();
 
   // =========================================================================
-  // AUTH (magic link)
+  // AUTH (email + password)
   // =========================================================================
   function showLogin() { loginScreen.style.display = 'flex'; appRoot.style.display = 'none'; }
   function showApp()   { loginScreen.style.display = 'none'; appRoot.style.display = 'block'; }
 
-  async function sendLink() {
+  // 'signin' = returning user; 'signup' = creating a new account
+  var authMode = 'signin';
+
+  function showLoginError(msg) { loginError.textContent = msg; loginError.style.display = 'block'; }
+  function clearLoginError() { loginError.textContent = ''; loginError.style.display = 'none'; }
+
+  // Switch the form between Sign in and Create account.
+  function setMode(mode) {
+    authMode = mode;
+    clearLoginError();
+    if (mode === 'signup') {
+      loginSub.textContent = 'Create your private Desk — pick an email and a password (at least 6 characters).';
+      loginBtn.textContent = 'Create account';
+      loginToggle.textContent = 'Have an account? Sign in';
+      loginPassword.setAttribute('autocomplete', 'new-password');
+      loginHint.style.display = 'block';
+    } else {
+      loginSub.textContent = 'Follow your nerdiest threads. Sign in to your private desk.';
+      loginBtn.textContent = 'Sign in';
+      loginToggle.textContent = 'Create account';
+      loginPassword.setAttribute('autocomplete', 'current-password');
+      loginHint.style.display = 'none';
+    }
+    loginBtn.disabled = false;
+  }
+
+  // Turn Supabase's technical errors into plain English shown on the form.
+  function friendlyAuthError(err, mode) {
+    var m = ((err && (err.message || err.error_description)) || '') + '';
+    var low = m.toLowerCase();
+    if (low.indexOf('invalid login') !== -1 || low.indexOf('invalid credentials') !== -1)
+      return "That email and password don't match. Check them, or create an account.";
+    if (low.indexOf('already registered') !== -1 || low.indexOf('already been registered') !== -1 || low.indexOf('user already') !== -1)
+      return 'That email is already registered — try signing in instead.';
+    if (low.indexOf('at least 6') !== -1 || low.indexOf('password should be') !== -1 || low.indexOf('weak password') !== -1)
+      return 'Password must be at least 6 characters.';
+    if (low.indexOf('email not confirmed') !== -1)
+      return 'Please confirm your email first — check your inbox for the confirmation link, then sign in.';
+    if (low.indexOf('unable to validate email') !== -1 || low.indexOf('invalid email') !== -1)
+      return "That email address doesn't look right.";
+    if (low.indexOf('rate limit') !== -1 || low.indexOf('too many') !== -1)
+      return 'Too many attempts — wait a moment and try again.';
+    return m || 'Something went wrong — please try again.';
+  }
+
+  async function submitAuth() {
     var email = (loginEmail.value || '').trim();
-    if (!email) { loginHint.textContent = 'Enter your email first.'; return; }
-    loginBtn.disabled = true; loginBtn.textContent = 'Sending…';
+    var password = loginPassword.value || '';
+    clearLoginError();
+    if (!email) { showLoginError('Enter your email.'); return; }
+    if (!password) { showLoginError('Enter your password.'); return; }
+    if (authMode === 'signup' && password.length < 6) {
+      showLoginError('Password must be at least 6 characters.'); return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
+
     try {
-      // Land the magic-link click back on this exact page (works on localhost
-      // and on the live site). The dashboard Site URL / Redirect URLs must
-      // allow it (see YOU DO 2a / 6b).
-      var redirect = window.location.origin + window.location.pathname;
-      var res = await sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: redirect } });
-      if (res.error) throw res.error;
-      loginForm.innerHTML =
-        '<div class="login-check"><div class="login-check-big">Check your email ✉️</div>' +
-        'We sent a magic sign-in link to <b>' + esc(email) + '</b>. Open it on this device to land on your Desk.</div>';
+      if (authMode === 'signup') {
+        var up = await sb.auth.signUp({ email: email, password: password });
+        if (up.error) throw up.error;
+        // If the Supabase project has "Confirm email" turned OFF, signUp returns
+        // a session and onAuthStateChange takes over (seeding the starter set).
+        // If it's ON, there's no session yet — try an immediate sign-in; if that
+        // fails, the email needs confirming first.
+        if (!(up.data && up.data.session)) {
+          var si = await sb.auth.signInWithPassword({ email: email, password: password });
+          if (si.error) {
+            setMode('signin');
+            loginBtn.disabled = false; loginBtn.textContent = 'Sign in';
+            showLoginError('Account created. Please check your email to confirm it, then sign in.');
+            return;
+          }
+        }
+        // success → onAuthStateChange runs startApp() → ensureStarterSet()
+      } else {
+        var res = await sb.auth.signInWithPassword({ email: email, password: password });
+        if (res.error) throw res.error;
+        // success → onAuthStateChange loads the app
+      }
     } catch (err) {
-      loginBtn.disabled = false; loginBtn.textContent = 'Send me a magic link';
-      loginHint.textContent = 'Could not send the link: ' + (err.message || String(err));
+      loginBtn.disabled = false;
+      loginBtn.textContent = authMode === 'signup' ? 'Create account' : 'Sign in';
+      showLoginError(friendlyAuthError(err, authMode));
     }
   }
-  loginBtn.addEventListener('click', sendLink);
-  loginEmail.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendLink(); });
+
+  // Fallback only: this STILL sends an email (a password-reset link). Normal
+  // sign-in is email + password and never emails anyone. Update the redirect URL
+  // below if your live site address is different.
+  async function forgotPassword() {
+    var email = (loginEmail.value || '').trim();
+    clearLoginError();
+    if (!email) { showLoginError('Type your email above first, then tap “Forgot password?”.'); return; }
+    try {
+      var res = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://kpsmas123-bit.github.io/desk/'
+      });
+      if (res.error) throw res.error;
+      showLoginError('If that email has an account, a password-reset link is on its way.');
+    } catch (err) {
+      showLoginError(friendlyAuthError(err, 'signin'));
+    }
+  }
+
+  loginBtn.addEventListener('click', submitAuth);
+  loginEmail.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitAuth(); });
+  loginPassword.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitAuth(); });
+  loginToggle.addEventListener('click', function () { setMode(authMode === 'signin' ? 'signup' : 'signin'); });
+  loginForgot.addEventListener('click', forgotPassword);
+  setMode('signin');
+
   signoutBtn.addEventListener('click', function () { sb.auth.signOut(); });
 
   // onAuthStateChange fires an INITIAL_SESSION event on subscribe, so it also
-  // covers the page-load check and the magic-link return.
+  // covers the page-load session check, plus sign-in / sign-up / sign-out.
   sb.auth.onAuthStateChange(function (event, session) {
     var uid = session && session.user ? session.user.id : null;
     if (uid) {
