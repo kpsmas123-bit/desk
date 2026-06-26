@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft</title>
+<!-- Public config: Supabase URL + PUBLISHABLE key only. Safe to commit because RLS
+     is enabled (migration 0004). The SECRET key never appears here. -->
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EDEFF5;
+    --bg-tint: #F4F2FB;
+    --card: #FFFFFF;
+    --ink: #1B1B26;
+    --muted: #777A8C;
+    --accent: #5B5BD6;
+    --accent-wash: #ECECFB;
+    --live: #E0641E;
+    --live-wash: #FCEBDE;
+    --hair: #E4E6EF;
+    --radius: 20px;
+    --shadow: 0 10px 30px -14px rgba(40,42,80,.22);
+    --shadow-lift: 0 18px 40px -16px rgba(40,42,80,.30);
+    --spring: cubic-bezier(.34,1.4,.5,1);
+    --font-sans: "Plus Jakarta Sans", -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, var(--bg-tint) 0%, var(--bg) 55%) fixed;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    transition: background .35s ease, color .35s ease;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 18px 80px; }
+
+  /* header */
+  .top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .brand { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+  .crumb {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px; color: var(--muted);
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  }
+  .crumb .seg {
+    background: var(--card); border: 1px solid var(--hair);
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .crumb button.seg {
+    cursor: pointer; color: var(--accent); font: inherit;
+    transition: transform .2s var(--spring), background .2s ease;
+  }
+  .crumb button.seg:hover { transform: translateY(-1px); background: var(--accent-wash); }
+  .crumb .sep { opacity: .5; }
+
+  /* right-aligned header actions (gear + sign out) */
+  .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    padding: 7px 13px; border-radius: 999px; cursor: pointer; box-shadow: var(--shadow);
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: transform .2s var(--spring), background .2s ease, color .2s ease;
+  }
+  .icon-btn:hover { transform: translateY(-1px); background: var(--accent-wash); color: var(--accent); }
+  .icon-btn:active { transform: translateY(0) scale(.97); }
+
+  /* pill nav rows */
+  nav.pages, .subnav {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  nav.pages { margin-bottom: 14px; }
+  .subnav { margin-bottom: 22px; }
+  .subnav:empty { display: none; }
+
+  .pill {
+    font-family: var(--font-sans);
+    font-weight: 700; font-size: 14px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--ink);
+    padding: 9px 16px; border-radius: 999px; cursor: pointer;
+    transition: transform .25s var(--spring), background .2s ease, color .2s ease, box-shadow .25s var(--spring);
+    box-shadow: var(--shadow);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .pill:hover { transform: translateY(-2px) scale(1.02); }
+  .pill:active { transform: translateY(0) scale(.98); }
+  .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* smaller pills for the second row (subpages / threads) */
+  .subnav .pill { font-size: 13px; padding: 7px 13px; }
+  .pill .pending-dot {
+    font-family: "IBM Plex Mono", monospace; font-size: 9.5px; font-weight: 500;
+    background: var(--live-wash); color: var(--live);
+    padding: 1px 7px; border-radius: 999px;
+  }
+  .pill.active .pending-dot { background: rgba(255,255,255,.25); color: #fff; }
+
+  .pill.add {
+    background: transparent; box-shadow: none; color: var(--accent);
+    border-style: dashed; border-color: var(--accent);
+  }
+  .pill.add:hover { background: var(--accent-wash); }
+
+  /* create form */
+  .newform {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; margin-bottom: 22px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .newform .ftitle { font-weight: 800; font-size: 15px; }
+  .newform input {
+    font-family: var(--font-sans); font-size: 14px; color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 10px 13px; width: 100%;
+    background: var(--bg-tint);
+  }
+  .newform input:focus { outline: none; border-color: var(--accent); }
+  .newform .hint { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .newform .row { display: flex; gap: 8px; }
+  .btn {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px;
+    border-radius: 999px; padding: 9px 18px; cursor: pointer; border: 1px solid var(--hair);
+    transition: transform .2s var(--spring), background .2s ease;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.ghost { background: var(--card); color: var(--muted); }
+  .btn.ghost:hover { background: var(--bg-tint); }
+
+  /* controls */
+  .controls {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .controls .ctl-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+  }
+  select {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px;
+    color: var(--ink); background: var(--card);
+    border: 1px solid var(--hair); border-radius: 999px;
+    padding: 8px 14px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  .count {
+    margin-left: auto;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--muted);
+  }
+
+  /* feed grid */
+  #feed { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 860px) { #feed { grid-template-columns: 1fr 1fr; } }
+
+  /* tile */
+  .tile {
+    background: var(--card); border: 1px solid var(--hair);
+    border-radius: var(--radius); padding: 18px 18px 14px;
+    box-shadow: var(--shadow);
+    transition: transform .3s var(--spring), box-shadow .3s var(--spring);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .tile:hover { transform: translateY(-3px) scale(1.006); box-shadow: var(--shadow-lift); }
+
+  .tile .meta {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted);
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  }
+  .tile .meta .src { color: var(--ink); font-weight: 500; }
+  .tile .meta .dot { opacity: .45; }
+
+  .topic {
+    font-family: var(--font-sans); font-weight: 700; font-size: 10.5px;
+    background: var(--accent-wash); color: var(--accent);
+    padding: 2px 9px; border-radius: 999px; letter-spacing: .01em;
+  }
+  .lean {
+    font-family: var(--font-sans); font-weight: 700; font-size: 10.5px;
+    background: var(--live-wash); color: var(--live);
+    padding: 2px 9px; border-radius: 999px; text-transform: capitalize;
+  }
+
+  .tile h2 { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.28; letter-spacing: -.01em; }
+  .tile h2 a { color: var(--ink); text-decoration: none; }
+  .tile h2 a:hover { color: var(--accent); }
+
+  .summary { font-size: 14.5px; line-height: 1.5; color: var(--ink); margin: 0; }
+  .headline-only { font-size: 13.5px; font-style: italic; color: var(--muted); margin: 0; }
+
+  .bullets { margin: 2px 0 0; padding-left: 18px; }
+  .bullets li { font-size: 13.5px; line-height: 1.5; color: var(--ink); opacity: .82; margin-bottom: 3px; }
+
+  .verify-note {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted);
+    background: var(--bg-tint); border: 1px solid var(--hair);
+    border-radius: 10px; padding: 5px 10px; align-self: flex-start;
+  }
+
+  .actions { display: flex; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--hair); }
+  .act {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12.5px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    transition: transform .2s var(--spring), background .2s ease, color .2s ease;
+  }
+  .act:hover { transform: translateY(-1px); background: var(--accent-wash); color: var(--accent); border-color: var(--accent-wash); }
+  .act:active { transform: translateY(0) scale(.96); }
+
+  /* states */
+  .state {
+    grid-column: 1 / -1;
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    padding: 34px; text-align: center; color: var(--muted); box-shadow: var(--shadow);
+    font-size: 15px; line-height: 1.55;
+  }
+  .state .big { font-size: 17px; font-weight: 800; color: var(--ink); display: block; margin-bottom: 6px; }
+  .error {
+    background: var(--live-wash); border: 1px solid #f2c3a3; color: #8a3a10;
+    border-radius: var(--radius); padding: 18px 20px; white-space: pre-wrap;
+    font-size: 14px; line-height: 1.5; box-shadow: var(--shadow);
+  }
+  .skeleton {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    padding: 18px; box-shadow: var(--shadow); height: 150px;
+    opacity: .6;
+  }
+
+  /* toast */
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--card); font-weight: 700; font-size: 13.5px;
+    padding: 11px 18px; border-radius: 999px; box-shadow: var(--shadow-lift);
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .35s var(--spring); z-index: 50;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== login screen ===== */
+  .login {
+    min-height: 100vh; display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow-lift); padding: 34px 30px; width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 14px; text-align: left;
+  }
+  .login-brand { font-size: 30px; font-weight: 800; letter-spacing: -.01em; }
+  .login-sub { color: var(--muted); font-size: 14.5px; line-height: 1.5; margin-bottom: 4px; }
+  .login-card input {
+    font-family: var(--font-sans); font-size: 15px; color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 12px 14px; width: 100%;
+    background: var(--bg-tint);
+  }
+  .login-card input:focus { outline: none; border-color: var(--accent); }
+  .login-card .btn.primary { width: 100%; padding: 12px; font-size: 14.5px; }
+  .login-hint { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .login-check { color: var(--ink); font-size: 14.5px; line-height: 1.55; }
+  .login-check-big { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+
+  /* ===== appearance sheet ===== */
+  .sheet-backdrop {
+    position: fixed; inset: 0; background: rgba(20,21,28,.42);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 60;
+  }
+  .sheet-backdrop.show { display: flex; }
+  .sheet-card {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow-lift); padding: 22px; width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .sheet-head { display: flex; align-items: center; }
+  .sheet-title { font-size: 17px; font-weight: 800; }
+  .sheet-x {
+    margin-left: auto; border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    width: 30px; height: 30px; border-radius: 999px; cursor: pointer; font-size: 14px;
+  }
+  .sheet-x:hover { background: var(--bg-tint); }
+  .sheet-section { display: flex; flex-direction: column; gap: 9px; }
+  .sheet-section.row-between { flex-direction: row; align-items: center; }
+  .sheet-section.row-between .sheet-label { margin-right: auto; }
+  .sheet-label { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12px; color: var(--ink);
+    border: 1px solid var(--hair); background: var(--card); border-radius: 999px;
+    padding: 6px 12px 6px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+    transition: transform .2s var(--spring), border-color .2s ease;
+  }
+  .swatch span { width: 16px; height: 16px; border-radius: 999px; display: inline-block; }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-wash); }
+  .seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12.5px; color: var(--muted);
+    border: none; background: transparent; padding: 8px 14px; cursor: pointer;
+  }
+  .seg button.sel { background: var(--accent); color: #fff; }
+  .toggle {
+    width: 46px; height: 26px; border-radius: 999px; border: 1px solid var(--hair);
+    background: var(--bg-tint); cursor: pointer; position: relative; padding: 0;
+    transition: background .2s ease;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle .knob {
+    position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 999px;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s var(--spring);
+  }
+  .toggle.on .knob { transform: translateX(20px); }
+
+  /* ===== compact density ===== */
+  body.compact .wrap { padding: 16px 14px 60px; }
+  body.compact #feed { gap: 10px; }
+  body.compact .tile { padding: 13px 14px 11px; gap: 7px; }
+  body.compact .pill { padding: 7px 13px; font-size: 13px; }
+  body.compact nav.pages { margin-bottom: 10px; }
+  body.compact .subnav { margin-bottom: 14px; }
+  body.compact .tile h2 { font-size: 16px; }
+  body.compact .summary { font-size: 13.5px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- login screen (shown when there is no session) -->
+<div class="login" id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">Soft</div>
+    <div class="login-sub">Your private desk for the news you actually track. Sign in with a magic link — no password.</div>
+    <div id="loginForm">
+      <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
+      <button class="btn primary" id="loginBtn">Send me a magic link</button>
+      <div class="login-hint" id="loginHint">We'll email you a one-tap sign-in link.</div>
+    </div>
+  </div>
+</div>
+
+<!-- the app (shown when signed in) -->
+<div class="wrap" id="appRoot" style="display:none">
+  <div class="top">
+    <div class="brand">Soft</div>
+    <div class="crumb" id="crumb"><span class="seg">~</span></div>
+    <div class="top-actions">
+      <button class="icon-btn" id="gearBtn" title="Appearance">⚙︎ Appearance</button>
+      <button class="icon-btn" id="signoutBtn" title="Sign out">Sign out</button>
+    </div>
+  </div>
+
+  <nav class="pages" id="nav"></nav>
+  <div class="subnav" id="subnav"></div>
+  <div id="formHost"></div>
+
+  <div class="controls">
+    <span class="ctl-label">sort</span>
+    <select id="sort">
+      <option value="relevance">Most relevant</option>
+      <option value="newest">Newest</option>
+      <option value="reliability">Most reliable</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div id="feed">
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+</div>
+
+<!-- appearance sheet -->
+<div class="sheet-backdrop" id="sheet">
+  <div class="sheet-card">
+    <div class="sheet-head"><span class="sheet-title">Appearance</span><button class="sheet-x" id="sheetClose">✕</button></div>
+    <div class="sheet-section">
+      <div class="sheet-label">Theme</div>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="sheet-section row-between">
+      <div class="sheet-label">Dark mode</div>
+      <button class="toggle" id="darkToggle" role="switch" aria-label="Dark mode"><span class="knob"></span></button>
+    </div>
+    <div class="sheet-section">
+      <div class="sheet-label">Font</div>
+      <div class="seg" id="fontSeg">
+        <button data-font="jakarta">Sans</button>
+        <button data-font="serif">Serif</button>
+        <button data-font="mono">Mono</button>
+      </div>
+    </div>
+    <div class="sheet-section">
+      <div class="sheet-label">Density</div>
+      <div class="seg" id="densitySeg">
+        <button data-density="comfortable">Comfortable</button>
+        <button data-density="compact">Compact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+(function () {
+  var cfg = window.DESK_CONFIG;
+
+  // ---- single place to change the per-user thread cap (cost guardrail) ----
+  var THREAD_CAP = 15;
+
+  // ---- elements ----
+  var loginScreen = document.getElementById('loginScreen');
+  var loginForm   = document.getElementById('loginForm');
+  var loginEmail  = document.getElementById('loginEmail');
+  var loginBtn    = document.getElementById('loginBtn');
+  var loginHint   = document.getElementById('loginHint');
+  var appRoot   = document.getElementById('appRoot');
+  var navEl     = document.getElementById('nav');
+  var subnavEl  = document.getElementById('subnav');
+  var formHostEl= document.getElementById('formHost');
+  var crumbEl   = document.getElementById('crumb');
+  var feedEl    = document.getElementById('feed');
+  var countEl   = document.getElementById('count');
+  var sortEl    = document.getElementById('sort');
+  var toastEl   = document.getElementById('toast');
+  var gearBtn   = document.getElementById('gearBtn');
+  var signoutBtn= document.getElementById('signoutBtn');
+  var sheetEl   = document.getElementById('sheet');
+  var sheetClose= document.getElementById('sheetClose');
+  var swatchesEl= document.getElementById('swatches');
+  var darkToggle= document.getElementById('darkToggle');
+  var fontSeg   = document.getElementById('fontSeg');
+  var densitySeg= document.getElementById('densitySeg');
+
+  // page slug -> region filter value (page level still filters by region)
+  var REGION = {
+    'ca-leg-labor': 'ca',
+    'local-bay': 'local',
+    'national': 'national',
+    'international': 'intl'
+  };
+
+  var STORY_SELECT = 'title,source_name,url,summary,context_bullets,topics,lean,reliability_score,region,published_at,relevance_score,media_type,excerpt';
+
+  var pages = [];
+  // navigation state — which page / subpage / thread is open
+  var sel = { page: null, subpage: null, thread: null };
+  var stories = [];
+  var toastTimer = null;
+  var reqToken = 0;   // guards against slow responses landing after a newer click
+
+  var sb = null;
+  var currentUid = null;   // the signed-in user's id
+  var loadedFor = null;    // which uid we've already booted the app for
+
+  // ---- helpers ----
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function slugify(s) {
+    return String(s || '').toLowerCase().trim()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item';
+  }
+  function showError(msg) {
+    feedEl.innerHTML = '<div class="error">Something went wrong.\n\n' + esc(msg) + '</div>';
+  }
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+  }
+  function hasText(v) { return v != null && String(v).trim() !== ''; }
+  function asArray(v) { return v == null ? [] : (Array.isArray(v) ? v : [v]); }
+  function timeAgo(iso) {
+    if (!iso) return '';
+    var then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    var s = Math.floor((Date.now() - then) / 1000);
+    if (s < 60) return 'just now';
+    var m = Math.floor(s / 60); if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+    var d = Math.floor(h / 24); if (d < 30) return d + 'd ago';
+    var mo = Math.floor(d / 30); if (mo < 12) return mo + 'mo ago';
+    return Math.floor(mo / 12) + 'y ago';
+  }
+  function isUnratedSource(s) {
+    return s.lean === 'unrated' && Number(s.reliability_score) === 3;
+  }
+
+  // unwrap a supabase-js { data, error } response, throwing on error
+  function unwrap(res) {
+    if (res && res.error) throw new Error(res.error.message || JSON.stringify(res.error));
+    return res ? res.data : null;
+  }
+
+  if (!cfg || !cfg.url || !cfg.key) {
+    loginScreen.style.display = 'flex';
+    loginForm.innerHTML = '<div class="login-hint">config.js is missing or empty. Make sure app/config.js sets window.DESK_CONFIG = { url, key }.</div>';
+    return;
+  }
+
+  // supabase-js attaches the session JWT to every request automatically, so RLS
+  // scopes all reads/writes to the signed-in user — no manual apikey headers.
+  sb = createClient(cfg.url, cfg.key);
+
+  // =========================================================================
+  // THEMING (Light tier, per-user)
+  // =========================================================================
+  var ACCENTS = {
+    indigo: { name: 'Indigo', accent: '#5B5BD6', wash: '#ECECFB', live: '#E0641E', liveWash: '#FCEBDE' },
+    slate:  { name: 'Slate',  accent: '#4F5B6B', wash: '#EAEEF3', live: '#B7791F', liveWash: '#FAF1DC' },
+    forest: { name: 'Forest', accent: '#2F8559', wash: '#E3F2EA', live: '#C05621', liveWash: '#FBE8DC' },
+    claret: { name: 'Claret', accent: '#9F2B4E', wash: '#F7E5EC', live: '#B07A1F', liveWash: '#FAF1DC' },
+    sand:   { name: 'Sand',   accent: '#A9772F', wash: '#F3ECDC', live: '#8C5A2B', liveWash: '#F1E4D0' }
+  };
+  var THEME_ORDER = ['indigo', 'slate', 'forest', 'claret', 'sand'];
+  var LIGHT = { bg: '#EDEFF5', bgTint: '#F4F2FB', card: '#FFFFFF', ink: '#1B1B26', muted: '#777A8C', hair: '#E4E6EF' };
+  var DARK  = { bg: '#14151C', bgTint: '#1B1C25', card: '#20212B', ink: '#ECEDF6', muted: '#9698AE', hair: '#2D2E3B' };
+  var FONTS = {
+    jakarta: '"Plus Jakarta Sans", -apple-system, Segoe UI, Roboto, sans-serif',
+    serif:   'Georgia, "Iowan Old Style", "Times New Roman", serif',
+    mono:    '"IBM Plex Mono", ui-monospace, SFMono-Regular, monospace'
+  };
+
+  // current applied preferences
+  var prefs = { theme: 'indigo', dark_mode: false, font: 'jakarta', density: 'comfortable' };
+
+  function hexToRgba(hex, a) {
+    var h = hex.replace('#', '');
+    var r = parseInt(h.substring(0, 2), 16);
+    var g = parseInt(h.substring(2, 4), 16);
+    var b = parseInt(h.substring(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+  function normTheme(t) {
+    // the DB default is 'soft-default' (== the original Indigo look)
+    return ACCENTS[t] ? t : 'indigo';
+  }
+
+  function applyPrefs(p) {
+    p = p || {};
+    prefs = {
+      theme: normTheme(p.theme),
+      dark_mode: !!p.dark_mode,
+      font: FONTS[p.font] ? p.font : 'jakarta',
+      density: p.density === 'compact' ? 'compact' : 'comfortable'
+    };
+    var a = ACCENTS[prefs.theme];
+    var n = prefs.dark_mode ? DARK : LIGHT;
+    var r = document.documentElement;
+    r.style.setProperty('--bg', n.bg);
+    r.style.setProperty('--bg-tint', n.bgTint);
+    r.style.setProperty('--card', n.card);
+    r.style.setProperty('--ink', n.ink);
+    r.style.setProperty('--muted', n.muted);
+    r.style.setProperty('--hair', n.hair);
+    r.style.setProperty('--accent', a.accent);
+    r.style.setProperty('--accent-wash', prefs.dark_mode ? hexToRgba(a.accent, 0.26) : a.wash);
+    r.style.setProperty('--live', a.live);
+    r.style.setProperty('--live-wash', prefs.dark_mode ? hexToRgba(a.live, 0.24) : a.liveWash);
+    r.style.setProperty('--font-sans', FONTS[prefs.font]);
+    document.body.classList.toggle('compact', prefs.density === 'compact');
+  }
+
+  async function loadPreferences() {
+    try {
+      var data = unwrap(await sb.from('preferences').select('theme,dark_mode,font,density').maybeSingle());
+      applyPrefs(data || {});
+    } catch (e) {
+      applyPrefs({});
+    }
+    syncSheet();
+  }
+
+  async function savePreferences() {
+    if (!currentUid) return;
+    try {
+      await sb.from('preferences').upsert({
+        user_id: currentUid,
+        theme: prefs.theme,
+        dark_mode: prefs.dark_mode,
+        font: prefs.font,
+        density: prefs.density,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) { /* non-fatal — the look is already applied locally */ }
+  }
+
+  // appearance sheet wiring
+  function renderSwatches() {
+    swatchesEl.innerHTML = THEME_ORDER.map(function (k) {
+      var a = ACCENTS[k];
+      return '<button class="swatch" data-theme="' + k + '"><span style="background:' + a.accent + '"></span>' + esc(a.name) + '</button>';
+    }).join('');
+  }
+  function syncSheet() {
+    Array.prototype.forEach.call(swatchesEl.querySelectorAll('.swatch'), function (b) {
+      b.classList.toggle('sel', b.getAttribute('data-theme') === prefs.theme);
+    });
+    darkToggle.classList.toggle('on', prefs.dark_mode);
+    Array.prototype.forEach.call(fontSeg.querySelectorAll('button'), function (b) {
+      b.classList.toggle('sel', b.getAttribute('data-font') === prefs.font);
+    });
+    Array.prototype.forEach.call(densitySeg.querySelectorAll('button'), function (b) {
+      b.classList.toggle('sel', b.getAttribute('data-density') === prefs.density);
+    });
+  }
+  function setPref(key, val) {
+    var next = { theme: prefs.theme, dark_mode: prefs.dark_mode, font: prefs.font, density: prefs.density };
+    next[key] = val;
+    applyPrefs(next);
+    syncSheet();
+    savePreferences();
+  }
+  gearBtn.addEventListener('click', function () { sheetEl.classList.add('show'); });
+  sheetClose.addEventListener('click', function () { sheetEl.classList.remove('show'); });
+  sheetEl.addEventListener('click', function (e) { if (e.target === sheetEl) sheetEl.classList.remove('show'); });
+  swatchesEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.swatch'); if (b) setPref('theme', b.getAttribute('data-theme'));
+  });
+  darkToggle.addEventListener('click', function () { setPref('dark_mode', !prefs.dark_mode); });
+  fontSeg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (b) setPref('font', b.getAttribute('data-font'));
+  });
+  densitySeg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (b) setPref('density', b.getAttribute('data-density'));
+  });
+  renderSwatches();
+  syncSheet();
+
+  // =========================================================================
+  // AUTH (magic link)
+  // =========================================================================
+  function showLogin() { loginScreen.style.display = 'flex'; appRoot.style.display = 'none'; }
+  function showApp()   { loginScreen.style.display = 'none'; appRoot.style.display = 'block'; }
+
+  async function sendLink() {
+    var email = (loginEmail.value || '').trim();
+    if (!email) { loginHint.textContent = 'Enter your email first.'; return; }
+    loginBtn.disabled = true; loginBtn.textContent = 'Sending…';
+    try {
+      // Land the magic-link click back on this exact page (works on localhost
+      // and on the live site). The dashboard Site URL / Redirect URLs must
+      // allow it (see YOU DO 2a / 6b).
+      var redirect = window.location.origin + window.location.pathname;
+      var res = await sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: redirect } });
+      if (res.error) throw res.error;
+      loginForm.innerHTML =
+        '<div class="login-check"><div class="login-check-big">Check your email ✉️</div>' +
+        'We sent a magic sign-in link to <b>' + esc(email) + '</b>. Open it on this device to land on your Desk.</div>';
+    } catch (err) {
+      loginBtn.disabled = false; loginBtn.textContent = 'Send me a magic link';
+      loginHint.textContent = 'Could not send the link: ' + (err.message || String(err));
+    }
+  }
+  loginBtn.addEventListener('click', sendLink);
+  loginEmail.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendLink(); });
+  signoutBtn.addEventListener('click', function () { sb.auth.signOut(); });
+
+  // onAuthStateChange fires an INITIAL_SESSION event on subscribe, so it also
+  // covers the page-load check and the magic-link return.
+  sb.auth.onAuthStateChange(function (event, session) {
+    var uid = session && session.user ? session.user.id : null;
+    if (uid) {
+      currentUid = uid;
+      showApp();
+      if (loadedFor !== uid) { loadedFor = uid; startApp(); }
+    } else {
+      currentUid = null; loadedFor = null;
+      showLogin();
+    }
+  });
+
+  // =========================================================================
+  // APP BOOT (after login)
+  // =========================================================================
+  async function startApp() {
+    try {
+      await loadPreferences();
+      await ensureStarterSet();
+      await loadPages();
+    } catch (err) {
+      showError(err.message || String(err));
+    }
+  }
+
+  // STEP 3 — give brand-new users a fresh starter Desk. Do NOT set user_id:
+  // the column default auth.uid() stamps it to the signed-in user.
+  async function ensureStarterSet() {
+    var existing = unwrap(await sb.from('pages').select('id').limit(1));
+    if (existing && existing.length) return;  // already has pages — nothing to do
+
+    var createdPages = unwrap(await sb.from('pages').insert([
+      { title: 'CA Leg + Labor', slug: 'ca-leg-labor', position: 0 },
+      { title: 'Local Bay', slug: 'local-bay', position: 1 },
+      { title: 'National', slug: 'national', position: 2 },
+      { title: 'International', slug: 'international', position: 3 }
+    ]).select());
+
+    var ca = (createdPages || []).filter(function (p) { return p.slug === 'ca-leg-labor'; })[0];
+    if (!ca) return;
+
+    await sb.from('subpages').insert([
+      { page_id: ca.id, title: 'State legislature & bills', slug: 'state-legislature-bills', status: 'pending', position: 0 },
+      { page_id: ca.id, title: 'Labor campaigns', slug: 'labor-campaigns', status: 'pending', position: 1 },
+      { page_id: ca.id, title: 'State prop campaigns', slug: 'state-prop-camp', status: 'pending', position: 2 },
+      { page_id: ca.id, title: 'Midterm / Congress', slug: 'midterm-congress', status: 'pending', position: 3 }
+    ]);
+  }
+
+  async function loadPages() {
+    var data = unwrap(await sb.from('pages').select('id,title,slug,position').order('position'));
+    if (!data || !data.length) { showError('No pages found for your account.'); return; }
+    pages = data;
+    selectPage(pages[0]);
+  }
+
+  // ---- breadcrumb ----
+  function setCrumb() {
+    var parts = ['<span class="seg">~</span>'];
+    if (sel.page) {
+      parts.push('<span class="sep">/</span>');
+      parts.push('<button class="seg" data-up="page">' + esc(sel.page.slug) + '</button>');
+    }
+    if (sel.subpage) {
+      parts.push('<span class="sep">/</span>');
+      parts.push('<button class="seg" data-up="subpage">' + esc(sel.subpage.slug || slugify(sel.subpage.title)) + '</button>');
+    }
+    if (sel.thread) {
+      parts.push('<span class="sep">/</span>');
+      parts.push('<span class="seg">' + esc(slugify(sel.thread.title)) + '</span>');
+    }
+    crumbEl.innerHTML = parts.join('');
+  }
+  crumbEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.seg');
+    if (!btn) return;
+    if (btn.getAttribute('data-up') === 'page') selectPage(sel.page);
+    else if (btn.getAttribute('data-up') === 'subpage') selectSubpage(sel.subpage);
+  });
+
+  // ---- top nav (pages) ----
+  function renderNav() {
+    navEl.innerHTML = '';
+    pages.forEach(function (p) {
+      var b = document.createElement('button');
+      b.className = 'pill' + (sel.page === p ? ' active' : '');
+      b.textContent = p.title;
+      b.addEventListener('click', function () { selectPage(p); });
+      navEl.appendChild(b);
+    });
+  }
+
+  // ---- second row: subpages (at page level) or threads (deeper) ----
+  function pendingDot(item) {
+    return item.status === 'pending' ? '<span class="pending-dot">pending</span>' : '';
+  }
+  function renderSubnav() {
+    closeForm();
+    subnavEl.innerHTML = '';
+    var atPageLevel = !sel.subpage;
+    var items = atPageLevel ? (sel.page._subpages || []) : (sel.subpage._threads || []);
+
+    items.forEach(function (item) {
+      var b = document.createElement('button');
+      var isActive = atPageLevel ? false : (sel.thread === item);
+      b.className = 'pill' + (isActive ? ' active' : '');
+      b.innerHTML = esc(item.title) + pendingDot(item);
+      b.addEventListener('click', function () {
+        if (atPageLevel) selectSubpage(item);
+        else selectThread(item);
+      });
+      subnavEl.appendChild(b);
+    });
+
+    var add = document.createElement('button');
+    add.className = 'pill add';
+    add.textContent = atPageLevel ? '+ New subpage' : '+ New thread';
+    add.addEventListener('click', function () { openForm(atPageLevel ? 'subpage' : 'thread'); });
+    subnavEl.appendChild(add);
+  }
+
+  // ---- create form ----
+  function closeForm() { formHostEl.innerHTML = ''; }
+  function openForm(kind) {
+    var noun = kind === 'subpage' ? 'subpage' : 'thread';
+    var parentName = kind === 'subpage' ? sel.page.title : sel.subpage.title;
+    formHostEl.innerHTML =
+      '<div class="newform">' +
+        '<div class="ftitle">New ' + noun + ' under "' + esc(parentName) + '"</div>' +
+        '<input id="f_title" placeholder="Title (e.g. Oakland city council)" autocomplete="off">' +
+        '<input id="f_desc" placeholder="One line: what should this track?" autocomplete="off">' +
+        '<div class="hint">It appears right away as <b>pending</b>. Its search query is written once, automatically, the next time the sync runs — then it fills itself in. (No story is saved here; layers match live.)</div>' +
+        '<div class="row">' +
+          '<button class="btn primary" id="f_create">Create</button>' +
+          '<button class="btn ghost" id="f_cancel">Cancel</button>' +
+        '</div>' +
+      '</div>';
+    var titleEl = document.getElementById('f_title');
+    titleEl.focus();
+    document.getElementById('f_cancel').addEventListener('click', closeForm);
+    document.getElementById('f_create').addEventListener('click', function () { submitForm(kind); });
+    titleEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') submitForm(kind); });
+    document.getElementById('f_desc').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitForm(kind); });
+  }
+
+  async function submitForm(kind) {
+    var title = document.getElementById('f_title').value.trim();
+    var desc = document.getElementById('f_desc').value.trim();
+    if (!title) { toast('Give it a title first'); return; }
+
+    // STEP 4 — per-user thread cap (cost guardrail). Count this user's threads
+    // (RLS scopes the count to them) and block past the cap.
+    if (kind === 'thread') {
+      try {
+        var res = await sb.from('threads').select('id', { count: 'exact', head: true });
+        if (res.error) throw res.error;
+        if ((res.count || 0) >= THREAD_CAP) {
+          toast("You've hit your thread limit (" + THREAD_CAP + ") — archive one to add another");
+          return;
+        }
+      } catch (e) {
+        toast('Could not check your thread count — try again');
+        return;
+      }
+    }
+
+    var btn = document.getElementById('f_create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    var table, body;
+    if (kind === 'subpage') {
+      table = 'subpages';
+      body = {
+        page_id: sel.page.id, title: title, slug: slugify(title),
+        description: desc, status: 'pending', query: null,
+        position: (sel.page._subpages || []).length
+      };
+    } else {
+      table = 'threads';
+      body = {
+        subpage_id: sel.subpage.id, title: title, description: desc,
+        status: 'pending', derived_query: null,
+        position: (sel.subpage._threads || []).length
+      };
+    }
+
+    // No user_id here on purpose — the column default auth.uid() stamps it,
+    // and the RLS WITH CHECK confirms it matches the signed-in user.
+    try {
+      var rows = unwrap(await sb.from(table).insert(body).select());
+      var created = Array.isArray(rows) && rows.length ? rows[0] : body;
+      closeForm();
+      if (kind === 'subpage') {
+        sel.page._subpages = (sel.page._subpages || []).concat([created]);
+        renderSubnav();
+        selectSubpage(created);
+      } else {
+        sel.subpage._threads = (sel.subpage._threads || []).concat([created]);
+        selectThread(created);
+      }
+      toast('Created — query builds on next sync');
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Create';
+      toast('Could not save');
+      showError('Could not create the ' + kind + '.\n\n' + (err.message || String(err)));
+    }
+  }
+
+  // ---- story fetching per level ----
+  function sortedRows() {
+    var sort = sortEl.value;
+    var rows = stories.slice();
+    if (sort === 'newest') {
+      rows.sort(function (a, b) { return String(b.published_at || '').localeCompare(String(a.published_at || '')); });
+    } else if (sort === 'reliability') {
+      rows.sort(function (a, b) { return (Number(b.reliability_score) || 0) - (Number(a.reliability_score) || 0); });
+    }
+    return rows;
+  }
+  function pendingState(noun) {
+    feedEl.innerHTML = '<div class="state"><span class="big">Pending — query builds on the next sync</span>' +
+      'This ' + noun + ' has no search query yet. Run the sync ' +
+      '(<code>python3 ingest/run_ingest.py</code>) and it will write the query once, ' +
+      'then fill itself in here automatically.</div>';
+    countEl.textContent = 'showing 0 stories';
+  }
+
+  async function loadStories() {
+    var myToken = ++reqToken;
+    feedEl.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+    countEl.textContent = 'loading…';
+
+    var level = sel.thread ? 'thread' : (sel.subpage ? 'subpage' : 'page');
+
+    try {
+      var data;
+      if (level === 'page') {
+        // Phase-5 behavior: region filter, hide noise, relevance order.
+        var region = REGION[sel.page.slug];
+        var q = sb.from('stories').select(STORY_SELECT)
+          .gt('relevance_score', 0)
+          .order('relevance_score', { ascending: false, nullsFirst: false })
+          .limit(100);
+        if (region) q = q.eq('region', region);
+        data = unwrap(await q);
+      } else {
+        // subpage/thread: match live by that level's query, ranked by ts_rank.
+        var qry = level === 'thread' ? sel.thread.derived_query : sel.subpage.query;
+        if (!hasText(qry)) { pendingState(level); return; }
+        data = unwrap(await sb.rpc('search_stories', { q: qry }));
+      }
+      if (myToken !== reqToken) return;   // a newer navigation won; ignore this
+      if (!Array.isArray(data)) throw new Error('Expected a list of stories but got:\n\n' + JSON.stringify(data, null, 2));
+      stories = data;
+      renderFeed();
+    } catch (err) {
+      if (myToken !== reqToken) return;
+      showError(err.message || String(err));
+    }
+  }
+
+  // ---- feed rendering (Phase 5 tiles, unchanged) ----
+  function tileHtml(s) {
+    var meta = '';
+    if (hasText(s.source_name)) meta += '<span class="src">' + esc(s.source_name) + '</span>';
+    var ago = timeAgo(s.published_at);
+    if (ago) meta += '<span class="dot">·</span><span>' + esc(ago) + '</span>';
+    asArray(s.topics).forEach(function (t) { if (hasText(t)) meta += '<span class="topic">' + esc(t) + '</span>'; });
+    if (s.lean && s.lean !== 'unrated') meta += '<span class="lean">' + esc(s.lean) + '</span>';
+
+    var head = hasText(s.url)
+      ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title || '(untitled)') + '</a>'
+      : esc(s.title || '(untitled)');
+
+    var body = hasText(s.summary)
+      ? '<p class="summary">' + esc(s.summary) + '</p>'
+      : '<p class="headline-only">Headline only — open to read</p>';
+
+    var bullets = '';
+    var bl = asArray(s.context_bullets).filter(hasText);
+    if (bl.length) {
+      bullets = '<ul class="bullets">' + bl.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+    }
+
+    var verify = isUnratedSource(s) ? '<div class="verify-note">unrated source — verify</div>' : '';
+
+    return '<article class="tile">' +
+      '<div class="meta">' + meta + '</div>' +
+      '<h2>' + head + '</h2>' + body + bullets + verify +
+      '<div class="actions">' +
+        '<button class="act" data-act="save">☆ Save</button>' +
+        '<button class="act" data-act="thread">+ Thread</button>' +
+      '</div>' +
+    '</article>';
+  }
+  function renderFeed() {
+    if (!stories.length) {
+      feedEl.innerHTML = '<div class="state">Nothing here yet — the next sync will fill this in.</div>';
+      countEl.textContent = 'showing 0 stories';
+      return;
+    }
+    var rows = sortedRows();
+    countEl.textContent = 'showing ' + rows.length + ' stor' + (rows.length === 1 ? 'y' : 'ies');
+    feedEl.innerHTML = rows.map(tileHtml).join('');
+  }
+  feedEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('.act');
+    if (!btn) return;
+    toast(btn.getAttribute('data-act') === 'save' ? 'Saving — coming soon' : 'Threads — coming soon');
+  });
+  sortEl.addEventListener('change', renderFeed);
+
+  // ---- navigation flow ----
+  async function selectPage(p) {
+    sel = { page: p, subpage: null, thread: null };
+    renderNav();
+    setCrumb();
+    if (p._subpages) { renderSubnav(); }
+    else {
+      try {
+        var rows = unwrap(await sb.from('subpages')
+          .select('id,page_id,title,slug,query,status,description')
+          .eq('page_id', p.id).order('position'));
+        p._subpages = Array.isArray(rows) ? rows : [];
+      } catch (e) { p._subpages = []; }
+      if (sel.page === p) renderSubnav();
+    }
+    loadStories();
+  }
+  async function selectSubpage(sp) {
+    sel.subpage = sp; sel.thread = null;
+    renderNav();
+    setCrumb();
+    if (sp._threads) { renderSubnav(); }
+    else {
+      try {
+        var rows = unwrap(await sb.from('threads')
+          .select('id,subpage_id,title,description,derived_query,status')
+          .eq('subpage_id', sp.id).order('position'));
+        sp._threads = Array.isArray(rows) ? rows : [];
+      } catch (e) { sp._threads = []; }
+      if (sel.subpage === sp) renderSubnav();
+    }
+    loadStories();
+  }
+  function selectThread(t) {
+    sel.thread = t;
+    setCrumb();
+    renderSubnav();
+    loadStories();
+  }
+})();
+</script>
+</body>
+</html>

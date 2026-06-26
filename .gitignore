@@ -1,0 +1,15 @@
+# Secrets — never upload your real keys
+.env
+app/config.local.js
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DESK — Phase 4 Enrichment Review</title>
+<script src="config.local.js"></script>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         margin: 0; background: #f4f5f7; color: #1a1a1a; }
+  header { background: #1f2933; color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0 0 4px; font-size: 18px; }
+  header .sub { font-size: 13px; color: #9aa5b1; }
+  .controls { position: sticky; top: 0; z-index: 10; background: #fff;
+              border-bottom: 1px solid #d8dde3; padding: 12px 24px;
+              display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .controls label { font-size: 14px; }
+  .controls select { font-size: 14px; padding: 4px 6px; }
+  .count { font-size: 14px; font-weight: 600; margin-left: auto; }
+  .count .flagged { color: #b00020; }
+  #list { padding: 16px 24px 60px; max-width: 1100px; }
+  .card { background: #fff; border: 1px solid #d8dde3; border-radius: 6px;
+          padding: 14px 16px; margin-bottom: 12px; display: grid;
+          grid-template-columns: 90px 1fr; gap: 14px; }
+  .card.flag { border-color: #b00020; box-shadow: 0 0 0 2px #ffd5da inset; }
+  .score { text-align: center; }
+  .score .num { font-size: 34px; font-weight: 700; line-height: 1; }
+  .score .lbl { font-size: 10px; text-transform: uppercase; color: #7b8794;
+                letter-spacing: .5px; margin-top: 4px; }
+  .body .title { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .body .title a { color: #1657c8; text-decoration: none; }
+  .body .title a:hover { text-decoration: underline; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 10px;
+           background: #e4e7eb; color: #323f4b; white-space: nowrap; }
+  .badge.k { background: #d9e6ff; color: #1d3c78; }
+  .badge.lean { background: #efe1ff; color: #5b2a86; }
+  .badge.rel { background: #d8f5e3; color: #226e44; }
+  .badge.region { background: #fff0d4; color: #8a5a00; }
+  .badge.noise { background: #c3c8cf; color: #3a4149; font-weight: 600; }
+  .badge.redflag { background: #b00020; color: #fff; font-weight: 700; }
+  .badge.acad { background: #e0d4ff; color: #3f1d7a; }
+  .field { font-size: 13px; margin: 6px 0; }
+  .field .flbl { color: #7b8794; font-weight: 600; text-transform: uppercase;
+                 font-size: 10px; letter-spacing: .5px; display: block; }
+  .summary { background: #f7f9fb; border-left: 3px solid #bcccdc;
+             padding: 6px 10px; border-radius: 0 4px 4px 0; }
+  .excerpt-missing { color: #b00020; font-style: italic; }
+  #error { display: none; background: #ffe3e3; color: #8a1010;
+           border: 1px solid #f5a3a3; padding: 16px 24px; margin: 24px;
+           border-radius: 6px; white-space: pre-wrap; font-size: 14px; }
+  #loading { padding: 40px 24px; font-size: 15px; color: #52606d; }
+</style>
+</head>
+<body>
+<header>
+  <h1>DESK — Phase 4 Enrichment Review (local inspector)</h1>
+  <div class="sub">Judging the AI's enrichment decisions. 🚩 red = summary exists but excerpt is empty (possible hallucination).</div>
+</header>
+
+<div class="controls">
+  <label><input type="checkbox" id="hideNoise" checked> hide noise (score 0)</label>
+  <label>sort:
+    <select id="sort">
+      <option value="relevance">relevance</option>
+      <option value="newest">newest</option>
+      <option value="reliability">reliability</option>
+    </select>
+  </label>
+  <span class="count" id="count">loading…</span>
+</div>
+
+<div id="error"></div>
+<div id="loading">Loading stories from Supabase…</div>
+<div id="list"></div>
+
+<script>
+(function () {
+  var cfg = window.DESK_CONFIG;
+  var listEl = document.getElementById('list');
+  var loadingEl = document.getElementById('loading');
+  var errorEl = document.getElementById('error');
+  var countEl = document.getElementById('count');
+  var hideNoiseEl = document.getElementById('hideNoise');
+  var sortEl = document.getElementById('sort');
+
+  var ALL = [];
+
+  function showError(msg) {
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = 'Could not load the stories.\n\n' + msg;
+  }
+
+  if (!cfg || !cfg.url || !cfg.key) {
+    showError('config.local.js is missing or empty. Make sure app/config.local.js exists and sets window.DESK_CONFIG = { url, key }.');
+    return;
+  }
+
+  var select = 'title,source_name,url,relevance_score,topics,lean,reliability_score,is_academic,summary,context_bullets,region,published_at,excerpt';
+  var endpoint = cfg.url.replace(/\/$/, '') +
+    '/rest/v1/stories?select=' + encodeURIComponent(select) +
+    '&order=relevance_score.desc.nullslast&limit=200';
+
+  fetch(endpoint, {
+    headers: { apikey: cfg.key, Authorization: 'Bearer ' + cfg.key }
+  })
+  .then(function (res) {
+    return res.text().then(function (txt) {
+      if (!res.ok) {
+        throw new Error('Supabase returned HTTP ' + res.status + ' ' + res.statusText + '\n\n' + txt);
+      }
+      try { return JSON.parse(txt); }
+      catch (e) { throw new Error('Got a response but it was not valid JSON:\n\n' + txt); }
+    });
+  })
+  .then(function (data) {
+    if (!Array.isArray(data)) {
+      throw new Error('Expected a list of stories but got:\n\n' + JSON.stringify(data, null, 2));
+    }
+    ALL = data;
+    loadingEl.style.display = 'none';
+    render();
+  })
+  .catch(function (err) {
+    showError(err.message || String(err));
+  });
+
+  function isRedFlag(s) {
+    var hasSummary = s.summary != null && String(s.summary).trim() !== '';
+    var noExcerpt = s.excerpt == null || String(s.excerpt).trim() === '';
+    return hasSummary && noExcerpt;
+  }
+
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function fmtTopics(t) {
+    if (t == null) return '';
+    if (Array.isArray(t)) return t.join(', ');
+    return String(t);
+  }
+
+  function render() {
+    var hideNoise = hideNoiseEl.checked;
+    var sort = sortEl.value;
+
+    var rows = ALL.slice();
+
+    var totalFlagged = ALL.filter(isRedFlag).length;
+
+    if (hideNoise) {
+      rows = rows.filter(function (s) { return Number(s.relevance_score) !== 0; });
+    }
+
+    rows.sort(function (a, b) {
+      if (sort === 'newest') {
+        return String(b.published_at || '').localeCompare(String(a.published_at || ''));
+      }
+      if (sort === 'reliability') {
+        return (Number(b.reliability_score) || 0) - (Number(a.reliability_score) || 0);
+      }
+      // relevance (nulls last)
+      var av = a.relevance_score == null ? -Infinity : Number(a.relevance_score);
+      var bv = b.relevance_score == null ? -Infinity : Number(b.relevance_score);
+      return bv - av;
+    });
+
+    countEl.innerHTML = 'showing ' + rows.length + ' of ' + ALL.length +
+      ' stories, <span class="flagged">' + totalFlagged + ' flagged 🚩</span>';
+
+    listEl.innerHTML = '';
+    rows.forEach(function (s) {
+      var flag = isRedFlag(s);
+      var noise = Number(s.relevance_score) === 0;
+      var scoreTxt = s.relevance_score == null ? '–' : s.relevance_score;
+
+      var badges = '';
+      if (flag) badges += '<span class="badge redflag">🚩 SUMMARY w/o EXCERPT</span>';
+      if (noise) badges += '<span class="badge noise">noise</span>';
+      if (fmtTopics(s.topics)) badges += '<span class="badge k">topics: ' + esc(fmtTopics(s.topics)) + '</span>';
+      if (s.region != null && s.region !== '') badges += '<span class="badge region">region: ' + esc(s.region) + '</span>';
+      if (s.lean != null && s.lean !== '') badges += '<span class="badge lean">lean: ' + esc(s.lean) + '</span>';
+      if (s.reliability_score != null) badges += '<span class="badge rel">reliability: ' + esc(s.reliability_score) + '</span>';
+      if (s.is_academic) badges += '<span class="badge acad">academic</span>';
+      if (s.source_name) badges += '<span class="badge">' + esc(s.source_name) + '</span>';
+
+      var titleHtml = s.url
+        ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title || '(no title)') + '</a>'
+        : esc(s.title || '(no title)');
+
+      var summaryHtml = (s.summary != null && String(s.summary).trim() !== '')
+        ? '<div class="summary">' + esc(s.summary) + '</div>'
+        : '<div class="summary" style="color:#7b8794">(no summary)</div>';
+
+      var excerptHtml = (s.excerpt == null || String(s.excerpt).trim() === '')
+        ? '<span class="excerpt-missing">— empty / null —</span>'
+        : esc(s.excerpt);
+
+      var card = document.createElement('div');
+      card.className = 'card' + (flag ? ' flag' : '');
+      card.innerHTML =
+        '<div class="score"><div class="num">' + esc(scoreTxt) + '</div><div class="lbl">relevance</div></div>' +
+        '<div class="body">' +
+          '<div class="title">' + titleHtml + '</div>' +
+          '<div class="meta">' + badges + '</div>' +
+          '<div class="field"><span class="flbl">summary</span>' + summaryHtml + '</div>' +
+          '<div class="field"><span class="flbl">excerpt (source text the AI was given)</span>' + excerptHtml + '</div>' +
+        '</div>';
+      listEl.appendChild(card);
+    });
+  }
+
+  hideNoiseEl.addEventListener('change', render);
+  sortEl.addEventListener('change', render);
+})();
+</script>
+</body>
+</html>
