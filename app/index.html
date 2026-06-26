@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Soft</title>
+<title>Desk</title>
 <!-- Public config: Supabase URL + PUBLISHABLE key only. Safe to commit because RLS
      is enabled (migration 0004). The SECRET key never appears here. -->
 <script src="config.js"></script>
@@ -45,8 +45,22 @@
   .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 18px 80px; }
 
   /* header */
-  .top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-  .brand { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+  .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brandblock { display: flex; flex-direction: column; gap: 2px; }
+  .wordmark {
+    font-family: "IBM Plex Mono", monospace; font-weight: 500;
+    font-size: 22px; letter-spacing: .22em; color: var(--ink);
+  }
+  .tagline {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    color: var(--muted); letter-spacing: .02em;
+  }
+
+  /* breadcrumb strip */
+  .crumbbar {
+    background: var(--accent-wash); border: 1px solid var(--hair);
+    border-radius: 12px; padding: 7px 12px; margin-bottom: 16px;
+  }
   .crumb {
     font-family: "IBM Plex Mono", monospace;
     font-size: 12.5px; color: var(--muted);
@@ -111,6 +125,44 @@
   }
   .pill.add:hover { background: var(--accent-wash); }
 
+  /* top page nav: two-line pills (title + muted sub-label) */
+  .pill.page { flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1.2; }
+  .pill.page .pill-title { font-weight: 800; font-size: 14px; }
+  .pill.page .pill-sub {
+    font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 10px; color: var(--muted);
+  }
+  .pill.page.active .pill-sub { color: rgba(255,255,255,.82); }
+
+  /* small muted count on subpage/thread chips */
+  .pill .chip-count {
+    font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 10px; color: var(--muted);
+  }
+  .pill.active .chip-count { color: rgba(255,255,255,.82); }
+
+  /* page header block (eyebrow / headline / intro) */
+  .page-header { margin: 4px 0 18px; }
+  .page-header:empty { display: none; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .09em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 8px;
+  }
+  .page-h1 {
+    font-family: var(--font-sans); font-weight: 800; font-size: 38px; line-height: 1.05;
+    letter-spacing: -.02em; color: var(--ink); margin: 0;
+  }
+  @media (max-width: 600px) { .page-h1 { font-size: 30px; } }
+  .page-intro { font-size: 15px; line-height: 1.5; color: var(--muted); margin: 10px 0 0; max-width: 64ch; }
+
+  /* section label + controls above the feed */
+  .feed-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .section-label {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .08em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .feed-controls { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .feed-controls .count { margin-left: 0; }
+  .hairline { height: 1px; background: var(--hair); margin-bottom: 18px; }
+
   /* create form */
   .newform {
     background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
@@ -165,7 +217,7 @@
     border-radius: var(--radius); padding: 18px 18px 14px;
     box-shadow: var(--shadow);
     transition: transform .3s var(--spring), box-shadow .3s var(--spring);
-    display: flex; flex-direction: column; gap: 10px;
+    display: flex; flex-direction: column; gap: 9px;
   }
   .tile:hover { transform: translateY(-3px) scale(1.006); box-shadow: var(--shadow-lift); }
 
@@ -202,6 +254,22 @@
     background: var(--bg-tint); border: 1px solid var(--hair);
     border-radius: 10px; padding: 5px 10px; align-self: flex-start;
   }
+
+  /* further reading: dashed divider + link buttons */
+  .further { margin-top: 2px; }
+  .further-head {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .07em;
+    color: var(--muted); text-transform: uppercase;
+    border-top: 1px dashed var(--hair); padding-top: 10px;
+  }
+  .further-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .further-link {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--accent);
+    text-decoration: none; border: 1px solid var(--hair); background: var(--bg-tint);
+    padding: 5px 11px; border-radius: 999px;
+    transition: transform .2s var(--spring), background .2s ease, border-color .2s ease;
+  }
+  .further-link:hover { transform: translateY(-1px); background: var(--accent-wash); border-color: var(--accent-wash); }
 
   .actions { display: flex; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--hair); }
   .act {
@@ -325,6 +393,67 @@
   body.compact .tile h2 { font-size: 16px; }
   body.compact .summary { font-size: 13.5px; }
 
+  /* ===== sync bar (live countdown) ===== */
+  .syncbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .next-refresh {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+    background: var(--card); border: 1px solid var(--hair); border-radius: 999px;
+    padding: 6px 13px; box-shadow: var(--shadow); display: inline-flex; align-items: center; gap: 7px;
+  }
+  .next-refresh::before {
+    content: ""; width: 7px; height: 7px; border-radius: 999px;
+    background: var(--accent); display: inline-block;
+  }
+
+  /* ===== pending queue ("Building at next refresh") ===== */
+  .pending-queue { margin-bottom: 18px; }
+  .pq-card {
+    background: var(--accent-wash); border: 1px solid var(--hair); border-radius: var(--radius);
+    padding: 14px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 9px;
+  }
+  .pq-head { font-weight: 800; font-size: 14px; color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pq-when { font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 11.5px; color: var(--muted); }
+  .pq-item { display: flex; align-items: center; gap: 10px; }
+  .pq-kind {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--muted);
+    background: var(--card); border: 1px solid var(--hair); border-radius: 999px;
+    padding: 2px 8px; text-transform: uppercase; letter-spacing: .03em;
+  }
+  .pq-title { font-size: 13.5px; font-weight: 700; color: var(--ink); flex: 1; min-width: 0; }
+  .pq-pill {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 500;
+    background: var(--live-wash); color: var(--live); padding: 2px 9px; border-radius: 999px;
+  }
+  body.compact .syncbar { margin-bottom: 10px; }
+  body.compact .pending-queue { margin-bottom: 12px; }
+
+  /* ===== "+ Thread" popover body ===== */
+  #threadSheetBody { display: flex; flex-direction: column; gap: 18px; }
+  #threadSheetBody input {
+    font-family: var(--font-sans); font-size: 14px; color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 10px 13px; width: 100%;
+    background: var(--bg-tint);
+  }
+  #threadSheetBody input:focus { outline: none; border-color: var(--accent); }
+  #threadSheetBody select { width: 100%; }
+  #threadSheetBody .btn.primary { width: 100%; }
+  .ts-section { display: flex; flex-direction: column; gap: 9px; }
+  .ts-thread-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+  .ts-thread {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px; color: var(--ink);
+    text-align: left; border: 1px solid var(--hair); background: var(--card); border-radius: 12px;
+    padding: 9px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: transform .15s var(--spring), background .2s ease, border-color .2s ease;
+  }
+  .ts-thread:hover:not([disabled]) { transform: translateY(-1px); background: var(--accent-wash); border-color: var(--accent-wash); }
+  .ts-thread[disabled] { cursor: default; opacity: .6; }
+  .ts-thread-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ts-tagged-pill {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 500;
+    background: var(--accent-wash); color: var(--accent); padding: 2px 9px; border-radius: 999px;
+  }
+  .ts-empty, .ts-loading { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
   }
@@ -335,8 +464,8 @@
 <!-- login screen (shown when there is no session) -->
 <div class="login" id="loginScreen">
   <div class="login-card">
-    <div class="login-brand">Soft</div>
-    <div class="login-sub">Your private desk for the news you actually track. Sign in with a magic link — no password.</div>
+    <div class="login-brand">Desk</div>
+    <div class="login-sub">Follow your nerdiest threads. Your private desk for the news you actually track — sign in with a magic link, no password.</div>
     <div id="loginForm">
       <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
       <button class="btn primary" id="loginBtn">Send me a magic link</button>
@@ -348,27 +477,41 @@
 <!-- the app (shown when signed in) -->
 <div class="wrap" id="appRoot" style="display:none">
   <div class="top">
-    <div class="brand">Soft</div>
-    <div class="crumb" id="crumb"><span class="seg">~</span></div>
+    <div class="brandblock">
+      <div class="wordmark">DESK</div>
+      <div class="tagline">follow your nerdiest threads…</div>
+    </div>
     <div class="top-actions">
+      <span class="next-refresh" id="nextRefresh">Next refresh in —</span>
       <button class="icon-btn" id="gearBtn" title="Appearance">⚙︎ Appearance</button>
       <button class="icon-btn" id="signoutBtn" title="Sign out">Sign out</button>
     </div>
   </div>
 
   <nav class="pages" id="nav"></nav>
+
+  <div class="crumbbar"><div class="crumb" id="crumb"><span class="seg">~</span></div></div>
+
+  <div class="page-header" id="pageHeader"></div>
+
+  <div class="pending-queue" id="pendingQueue" style="display:none"></div>
+
   <div class="subnav" id="subnav"></div>
   <div id="formHost"></div>
 
-  <div class="controls">
-    <span class="ctl-label">sort</span>
-    <select id="sort">
-      <option value="relevance">Most relevant</option>
-      <option value="newest">Newest</option>
-      <option value="reliability">Most reliable</option>
-    </select>
-    <span class="count" id="count"></span>
+  <div class="feed-head">
+    <span class="section-label" id="sectionLabel">LATEST ACROSS THE BEAT</span>
+    <div class="feed-controls">
+      <span class="ctl-label">sort</span>
+      <select id="sort">
+        <option value="relevance">Most relevant</option>
+        <option value="newest">Newest</option>
+        <option value="reliability">Most reliable</option>
+      </select>
+      <span class="count" id="count"></span>
+    </div>
   </div>
+  <div class="hairline"></div>
 
   <div id="feed">
     <div class="skeleton"></div>
@@ -406,6 +549,14 @@
   </div>
 </div>
 
+<!-- "+ Thread" popover: tag a story into an existing thread, or spin up a new one -->
+<div class="sheet-backdrop" id="threadSheet">
+  <div class="sheet-card">
+    <div class="sheet-head"><span class="sheet-title">Add to a thread</span><button class="sheet-x" id="threadSheetClose">✕</button></div>
+    <div id="threadSheetBody"></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script type="module">
@@ -440,6 +591,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   var darkToggle= document.getElementById('darkToggle');
   var fontSeg   = document.getElementById('fontSeg');
   var densitySeg= document.getElementById('densitySeg');
+  var nextRefreshEl = document.getElementById('nextRefresh');
+  var pendingQueueEl= document.getElementById('pendingQueue');
+  var pageHeaderEl  = document.getElementById('pageHeader');
+  var sectionLabelEl= document.getElementById('sectionLabel');
+  var threadSheet     = document.getElementById('threadSheet');
+  var threadSheetClose= document.getElementById('threadSheetClose');
+  var threadSheetBody = document.getElementById('threadSheetBody');
 
   // page slug -> region filter value (page level still filters by region)
   var REGION = {
@@ -449,14 +607,31 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     'international': 'intl'
   };
 
-  var STORY_SELECT = 'title,source_name,url,summary,context_bullets,topics,lean,reliability_score,region,published_at,relevance_score,media_type,excerpt';
+  // page slug -> editorial copy for the nav sub-label, header eyebrow + intro.
+  // Falls back to a generic shape for user-created pages with other slugs.
+  var PAGE_META = {
+    'ca-leg-labor':  { sub: 'your home beat',  eyebrow: 'CA LEGISLATURE + LABOR', intro: 'Bills, budget fights, and union campaigns shaping California.' },
+    'local-bay':     { sub: 'east bay + sf',   eyebrow: 'CITY + COUNTY POLITICS',  intro: 'Council votes, housing, and labor across the East Bay and San Francisco.' },
+    'national':      { sub: 'the big picture', eyebrow: 'CONGRESS + THE COURTS',   intro: 'Federal legislation, the midterms, and the national labor movement.' },
+    'international': { sub: 'the wider world', eyebrow: 'GLOBAL AFFAIRS',          intro: 'Security, elections, and trade unions beyond U.S. borders.' }
+  };
+  function pageMeta(slug) { return PAGE_META[slug] || { sub: '', eyebrow: 'YOUR BEAT', intro: '' }; }
+
+  var STORY_SELECT = 'id,title,source_name,url,summary,context_bullets,topics,lean,reliability_score,region,published_at,relevance_score,media_type,excerpt';
 
   var pages = [];
   // navigation state — which page / subpage / thread is open
   var sel = { page: null, subpage: null, thread: null };
   var stories = [];
+  var pendingItems = [];   // the user's status='pending' subpages + threads
   var toastTimer = null;
   var reqToken = 0;   // guards against slow responses landing after a newer click
+  var countdownStarted = false;
+
+  // The sync schedule, hardcoded to match .github/workflows/sync.yml (UTC hours
+  // 13:00 and 01:00 ≈ 6am / 6pm Pacific). The countdown is approximate — cron
+  // isn't second-exact and DST drifts it ~1h — which is fine.
+  var SYNC_UTC_HOURS = [13, 1];
 
   var sb = null;
   var currentUid = null;   // the signed-in user's id
@@ -684,13 +859,104 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   });
 
   // =========================================================================
+  // COUNTDOWN + PENDING QUEUE
+  // =========================================================================
+  function nextSyncDate() {
+    var now = new Date();
+    var best = null;
+    // Look across today and tomorrow (UTC) for the soonest scheduled hour.
+    for (var d = 0; d <= 1; d++) {
+      for (var i = 0; i < SYNC_UTC_HOURS.length; i++) {
+        var dt = new Date(Date.UTC(
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d,
+          SYNC_UTC_HOURS[i], 0, 0
+        ));
+        if (dt.getTime() > now.getTime() && (best === null || dt < best)) best = dt;
+      }
+    }
+    return best;
+  }
+
+  function lastSyncDate() {
+    var now = new Date();
+    var best = null;
+    for (var d = 0; d >= -1; d--) {
+      for (var i = 0; i < SYNC_UTC_HOURS.length; i++) {
+        var dt = new Date(Date.UTC(
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d,
+          SYNC_UTC_HOURS[i], 0, 0
+        ));
+        if (dt.getTime() <= now.getTime() && (best === null || dt > best)) best = dt;
+      }
+    }
+    return best;
+  }
+  function fmtTime(dt) {
+    if (!dt) return '';
+    var h = dt.getHours(), m = dt.getMinutes();
+    var ap = h >= 12 ? 'PM' : 'AM';
+    var hh = h % 12; if (hh === 0) hh = 12;
+    return hh + ':' + (m < 10 ? '0' + m : m) + ' ' + ap;
+  }
+
+  function tickCountdown() {
+    var next = nextSyncDate();
+    if (!next) { nextRefreshEl.textContent = 'Next refresh in —'; return; }
+    var ms = Math.max(0, next.getTime() - Date.now());
+    var totalMin = Math.floor(ms / 60000);
+    var h = Math.floor(totalMin / 60);
+    var m = totalMin % 60;
+    var txt = h + 'h ' + m + 'm';
+    nextRefreshEl.textContent = 'Next refresh in ' + txt;
+    var pqWhen = document.getElementById('pqWhen');
+    if (pqWhen) pqWhen.textContent = '· in ' + txt;
+  }
+
+  function renderPendingQueue() {
+    if (!pendingItems.length) {
+      pendingQueueEl.style.display = 'none';
+      pendingQueueEl.innerHTML = '';
+      return;
+    }
+    pendingQueueEl.style.display = 'block';
+    var head = '<div class="pq-head">Building at next refresh <span class="pq-when" id="pqWhen"></span></div>';
+    var list = pendingItems.map(function (it) {
+      return '<div class="pq-item">' +
+        '<span class="pq-kind">' + (it.kind === 'subpage' ? 'subpage' : 'thread') + '</span>' +
+        '<span class="pq-title">' + esc(it.title) + '</span>' +
+        '<span class="pq-pill">queued</span>' +
+      '</div>';
+    }).join('');
+    pendingQueueEl.innerHTML = '<div class="pq-card">' + head + list + '</div>';
+    tickCountdown();   // fill the "· in Xh Ym" immediately
+  }
+
+  async function loadPendingQueue() {
+    try {
+      var subs = unwrap(await sb.from('subpages').select('id,title,status').eq('status', 'pending')) || [];
+      var ths  = unwrap(await sb.from('threads').select('id,title,status').eq('status', 'pending')) || [];
+      pendingItems = subs.map(function (s) { return { kind: 'subpage', id: s.id, title: s.title }; })
+        .concat(ths.map(function (t) { return { kind: 'thread', id: t.id, title: t.title }; }));
+    } catch (e) {
+      pendingItems = [];
+    }
+    renderPendingQueue();
+  }
+
+  // =========================================================================
   // APP BOOT (after login)
   // =========================================================================
   async function startApp() {
+    if (!countdownStarted) {
+      countdownStarted = true;
+      tickCountdown();
+      setInterval(tickCountdown, 60000);   // tick live, once a minute
+    }
     try {
       await loadPreferences();
       await ensureStarterSet();
       await loadPages();
+      await loadPendingQueue();
     } catch (err) {
       showError(err.message || String(err));
     }
@@ -743,6 +1009,36 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       parts.push('<span class="seg">' + esc(slugify(sel.thread.title)) + '</span>');
     }
     crumbEl.innerHTML = parts.join('');
+    renderPageHeader();
+  }
+
+  // editorial header block: eyebrow + big headline + muted intro, adapting to
+  // the open page / subpage / thread.
+  function renderPageHeader() {
+    if (!pageHeaderEl) return;
+    if (!sel.page) { pageHeaderEl.innerHTML = ''; return; }
+    var updated = 'UPDATED ' + fmtTime(lastSyncDate());
+    var eyebrow, headline, intro;
+    if (sel.thread) {
+      eyebrow = (sel.subpage ? sel.subpage.title : sel.page.title).toUpperCase() + ' · ' + updated;
+      headline = sel.thread.title;
+      intro = sel.thread.description ||
+        (sel.thread.status === 'pending' ? 'Queued — its query builds at the next refresh.' : 'A live thread tracking this topic.');
+    } else if (sel.subpage) {
+      eyebrow = sel.page.title.toUpperCase() + ' · ' + updated;
+      headline = sel.subpage.title;
+      intro = sel.subpage.description ||
+        (sel.subpage.status === 'pending' ? 'Queued — its query builds at the next refresh.' : 'A live sub-page tracking this topic.');
+    } else {
+      var meta = pageMeta(sel.page.slug);
+      eyebrow = meta.eyebrow + ' · ' + updated;
+      headline = sel.page.title;
+      intro = meta.intro;
+    }
+    pageHeaderEl.innerHTML =
+      '<div class="eyebrow">' + esc(eyebrow) + '</div>' +
+      '<h1 class="page-h1">' + esc(headline) + '</h1>' +
+      (intro ? '<p class="page-intro">' + esc(intro) + '</p>' : '');
   }
   crumbEl.addEventListener('click', function (e) {
     var btn = e.target.closest('button.seg');
@@ -756,8 +1052,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     navEl.innerHTML = '';
     pages.forEach(function (p) {
       var b = document.createElement('button');
-      b.className = 'pill' + (sel.page === p ? ' active' : '');
-      b.textContent = p.title;
+      b.className = 'pill page' + (sel.page === p ? ' active' : '');
+      var meta = pageMeta(p.slug);
+      b.innerHTML = '<span class="pill-title">' + esc(p.title) + '</span>' +
+        (meta.sub ? '<span class="pill-sub">' + esc(meta.sub) + '</span>' : '');
       b.addEventListener('click', function () { selectPage(p); });
       navEl.appendChild(b);
     });
@@ -777,7 +1075,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       var b = document.createElement('button');
       var isActive = atPageLevel ? false : (sel.thread === item);
       b.className = 'pill' + (isActive ? ' active' : '');
-      b.innerHTML = esc(item.title) + pendingDot(item);
+      // Thread chips show a real story count (match_count from the health step).
+      // Subpage chips have no per-subpage story count fetched, so none is shown.
+      var count = (!atPageLevel && typeof item.match_count === 'number')
+        ? '<span class="chip-count">' + item.match_count + '</span>' : '';
+      b.innerHTML = '<span>' + esc(item.title) + '</span>' + count + pendingDot(item);
       b.addEventListener('click', function () {
         if (atPageLevel) selectSubpage(item);
         else selectThread(item);
@@ -787,7 +1089,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     var add = document.createElement('button');
     add.className = 'pill add';
-    add.textContent = atPageLevel ? '+ New subpage' : '+ New thread';
+    add.textContent = atPageLevel ? '+ New sub-page' : '+ New thread';
     add.addEventListener('click', function () { openForm(atPageLevel ? 'subpage' : 'thread'); });
     subnavEl.appendChild(add);
   }
@@ -871,11 +1173,198 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
         sel.subpage._threads = (sel.subpage._threads || []).concat([created]);
         selectThread(created);
       }
+      loadPendingQueue();   // the new item joins the "Building at next refresh" list
       toast('Created — query builds on next sync');
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Create';
       toast('Could not save');
       showError('Could not create the ' + kind + '.\n\n' + (err.message || String(err)));
+    }
+  }
+
+  // ---- "+ Thread" popover: tag a story into a thread (existing or new) ----
+  threadSheetClose.addEventListener('click', function () { threadSheet.classList.remove('show'); });
+  threadSheet.addEventListener('click', function (e) { if (e.target === threadSheet) threadSheet.classList.remove('show'); });
+
+  async function openThreadSheet(story) {
+    threadSheetBody.innerHTML = '<div class="ts-loading">Loading your threads…</div>';
+    threadSheet.classList.add('show');
+
+    var threads = [];
+    var subpages = [];
+    var tagged = {};   // thread_id -> true for threads this story is already in
+    try {
+      threads = unwrap(await sb.from('threads')
+        .select('id,title,status').order('created_at', { ascending: false })) || [];
+    } catch (e) { threads = []; }
+    try {
+      // Subpages to home a new thread in: the current page's if one is in
+      // context, otherwise all of the user's.
+      var sq = sb.from('subpages').select('id,title,page_id').order('position');
+      if (sel.page) sq = sq.eq('page_id', sel.page.id);
+      subpages = unwrap(await sq) || [];
+    } catch (e) { subpages = []; }
+    try {
+      var tg = unwrap(await sb.from('story_threads')
+        .select('thread_id').eq('story_id', story.id)) || [];
+      tg.forEach(function (r) { tagged[r.thread_id] = true; });
+    } catch (e) { /* leave tagged empty */ }
+
+    renderThreadSheet(story, threads, subpages, tagged);
+  }
+
+  function renderThreadSheet(story, threads, subpages, tagged) {
+    var rows = threads.length
+      ? threads.map(function (t) {
+          var isTagged = !!tagged[t.id];
+          var right = isTagged
+            ? '<span class="ts-tagged-pill">added</span>'
+            : (t.status === 'pending' ? '<span class="pending-dot">pending</span>' : '');
+          return '<button class="ts-thread" data-thread-id="' + esc(t.id) + '"' + (isTagged ? ' disabled' : '') + '>' +
+            '<span class="ts-thread-title">' + esc(t.title) + '</span>' + right +
+          '</button>';
+        }).join('')
+      : '<div class="ts-empty">No threads yet — create one above.</div>';
+
+    var subOptions = subpages.map(function (sp) {
+      return '<option value="' + esc(sp.id) + '">' + esc(sp.title) + '</option>';
+    }).join('');
+
+    threadSheetBody.innerHTML =
+      '<div class="ts-section">' +
+        '<div class="sheet-label">New thread from this story</div>' +
+        '<input id="ts_title" placeholder="Thread title" autocomplete="off">' +
+        '<input id="ts_desc" placeholder="One line: what should this track?" autocomplete="off">' +
+        '<select id="ts_subpage">' +
+          '<option value="" disabled selected>Choose a subpage…</option>' +
+          subOptions +
+          '<option value="__new__">+ New subpage…</option>' +
+        '</select>' +
+        '<input id="ts_newsub" placeholder="New subpage title" autocomplete="off" style="display:none">' +
+        '<button class="btn primary" id="ts_create">Create &amp; tag</button>' +
+      '</div>' +
+      '<div class="ts-section">' +
+        '<div class="sheet-label">Add to existing thread</div>' +
+        '<div class="ts-thread-list">' + rows + '</div>' +
+      '</div>';
+
+    // prefill the title with the story's headline as a starting point
+    var titleEl = document.getElementById('ts_title');
+    titleEl.value = story.title || '';
+
+    // reveal the inline "new subpage" field only when that option is picked
+    var subSel = document.getElementById('ts_subpage');
+    var newSub = document.getElementById('ts_newsub');
+    subSel.addEventListener('change', function () {
+      var isNew = subSel.value === '__new__';
+      newSub.style.display = isNew ? 'block' : 'none';
+      if (isNew) newSub.focus();
+    });
+
+    document.getElementById('ts_create').addEventListener('click', function () { createThreadFromStory(story); });
+    titleEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') createThreadFromStory(story); });
+    document.getElementById('ts_desc').addEventListener('keydown', function (e) { if (e.key === 'Enter') createThreadFromStory(story); });
+    newSub.addEventListener('keydown', function (e) { if (e.key === 'Enter') createThreadFromStory(story); });
+
+    threadSheetBody.querySelector('.ts-thread-list').addEventListener('click', function (e) {
+      var b = e.target.closest('.ts-thread');
+      if (!b || b.disabled) return;
+      tagStoryToThread(story, b.getAttribute('data-thread-id'));
+    });
+  }
+
+  async function tagStoryToThread(story, threadId) {
+    try {
+      // RLS on story_threads checks the thread belongs to this user.
+      unwrap(await sb.from('story_threads').insert({ story_id: story.id, thread_id: threadId }));
+      threadSheet.classList.remove('show');
+      toast('Added to thread');
+    } catch (err) {
+      // primary key (story_id, thread_id) collision == already tagged
+      toast('Already in that thread');
+    }
+  }
+
+  async function createThreadFromStory(story) {
+    var title = (document.getElementById('ts_title').value || '').trim();
+    var desc = (document.getElementById('ts_desc').value || '').trim();
+    if (!title) { toast('Give it a title first'); return; }
+
+    // A thread MUST have a subpage home — never null. Require a choice first.
+    var subSel = document.getElementById('ts_subpage');
+    var subChoice = subSel.value;
+    if (!subChoice) { toast('Choose a subpage for this thread'); return; }
+    var newSubTitle = '';
+    if (subChoice === '__new__') {
+      newSubTitle = (document.getElementById('ts_newsub').value || '').trim();
+      if (!newSubTitle) { toast('Name the new subpage first'); return; }
+    }
+
+    // We need a page to home a new subpage under. sel.page is always set in app
+    // context, but guard anyway.
+    if (subChoice === '__new__' && !sel.page) { toast('Open a page first'); return; }
+
+    // Same per-user thread cap as the "+ New thread" flow (pending + tracking).
+    // Checked BEFORE creating any subpage, so we never leave an orphan subpage.
+    try {
+      var res = await sb.from('threads').select('id', { count: 'exact', head: true });
+      if (res.error) throw res.error;
+      if ((res.count || 0) >= THREAD_CAP) {
+        toast("You've hit your thread limit (" + THREAD_CAP + ") — archive one to add another");
+        return;
+      }
+    } catch (e) {
+      toast('Could not check your thread count — try again');
+      return;
+    }
+
+    var btn = document.getElementById('ts_create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    try {
+      // 1. Resolve the subpage home — create it first if "+ New subpage".
+      var subId = subChoice;
+      var createdSub = null;
+      if (subChoice === '__new__') {
+        var subBody = {
+          page_id: sel.page.id, title: newSubTitle, slug: slugify(newSubTitle),
+          description: '', status: 'pending', query: null,
+          position: (sel.page._subpages || []).length
+        };
+        var subRows = unwrap(await sb.from('subpages').insert(subBody).select());
+        createdSub = Array.isArray(subRows) && subRows.length ? subRows[0] : null;
+        if (!createdSub) throw new Error('Subpage created but not returned.');
+        subId = createdSub.id;
+        // keep the page's cached subpage list in sync
+        if (sel.page) sel.page._subpages = (sel.page._subpages || []).concat([createdSub]);
+      }
+
+      // 2. Create the thread under that subpage — subpage_id is always set.
+      var body = {
+        subpage_id: subId, title: title, description: desc,
+        status: 'pending', derived_query: null,
+        position: 0
+      };
+      var rows = unwrap(await sb.from('threads').insert(body).select());
+      var created = Array.isArray(rows) && rows.length ? rows[0] : null;
+      if (!created) throw new Error('Thread created but not returned.');
+
+      // 3. Tag this story into the brand-new thread right away.
+      unwrap(await sb.from('story_threads').insert({ story_id: story.id, thread_id: created.id }));
+
+      // reflect in the nav: new subpage (at page level) and/or new thread (under
+      // the open subpage)
+      if (createdSub && !sel.subpage) renderSubnav();
+      if (sel.subpage && created.subpage_id === sel.subpage.id) {
+        sel.subpage._threads = (sel.subpage._threads || []).concat([created]);
+        renderSubnav();
+      }
+      loadPendingQueue();
+      threadSheet.classList.remove('show');
+      toast('Thread created & tagged — query builds next sync');
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Create & tag';
+      toast('Could not create thread');
     }
   }
 
@@ -934,12 +1423,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
   // ---- feed rendering (Phase 5 tiles, unchanged) ----
   function tileHtml(s) {
+    // mono meta row, mockup order: source · lean · time, then topic tags
     var meta = '';
     if (hasText(s.source_name)) meta += '<span class="src">' + esc(s.source_name) + '</span>';
+    if (s.lean && s.lean !== 'unrated') meta += '<span class="lean">' + esc(s.lean) + '</span>';
     var ago = timeAgo(s.published_at);
     if (ago) meta += '<span class="dot">·</span><span>' + esc(ago) + '</span>';
     asArray(s.topics).forEach(function (t) { if (hasText(t)) meta += '<span class="topic">' + esc(t) + '</span>'; });
-    if (s.lean && s.lean !== 'unrated') meta += '<span class="lean">' + esc(s.lean) + '</span>';
 
     var head = hasText(s.url)
       ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title || '(untitled)') + '</a>'
@@ -957,29 +1447,75 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     var verify = isUnratedSource(s) ? '<div class="verify-note">unrated source — verify</div>' : '';
 
-    return '<article class="tile">' +
+    // Further reading: the article link(s). Only the primary url exists today —
+    // alt_links isn't populated by ingest, so this is single-link for now and
+    // only labels "MULTI-LINK" if more links ever arrive.
+    var links = [];
+    if (hasText(s.url)) links.push({ url: s.url, label: s.source_name || 'Read the article' });
+    asArray(s.alt_links).forEach(function (l) {
+      if (l && hasText(l.url || l)) links.push({ url: (l.url || l), label: (l.label || l.source || 'Related link') });
+    });
+    var further = '';
+    if (links.length) {
+      further = '<div class="further">' +
+        '<div class="further-head">Further reading' + (links.length > 1 ? ' · multi-link' : '') + '</div>' +
+        '<div class="further-links">' +
+          links.map(function (l) {
+            return '<a class="further-link" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + ' ↗</a>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }
+
+    return '<article class="tile" data-story-id="' + esc(s.id) + '">' +
       '<div class="meta">' + meta + '</div>' +
-      '<h2>' + head + '</h2>' + body + bullets + verify +
+      '<h2>' + head + '</h2>' + body + bullets + verify + further +
       '<div class="actions">' +
         '<button class="act" data-act="save">☆ Save</button>' +
         '<button class="act" data-act="thread">+ Thread</button>' +
       '</div>' +
     '</article>';
   }
+  function threadEmptyHtml(t) {
+    // A live ('tracking') thread that currently matches nothing: show its health
+    // so a quiet thread reads as quiet, not broken.
+    var last = t.last_match_at
+      ? 'Last match ' + timeAgo(t.last_match_at) + '.'
+      : 'Nothing has matched this thread yet.';
+    return '<div class="state"><span class="big">No matches yet — may need broader sources</span>' +
+      esc(last) + ' Try a broader title/description on a new thread, or wait for the next sync.</div>';
+  }
+
+  function sectionLabel() {
+    if (sel.thread) return 'LATEST IN THIS THREAD';
+    if (sel.subpage) return 'LATEST IN THIS SUB-PAGE';
+    return 'LATEST ACROSS THE BEAT';
+  }
   function renderFeed() {
+    if (sectionLabelEl) sectionLabelEl.textContent = sectionLabel();
     if (!stories.length) {
-      feedEl.innerHTML = '<div class="state">Nothing here yet — the next sync will fill this in.</div>';
-      countEl.textContent = 'showing 0 stories';
+      feedEl.innerHTML = (sel.thread && sel.thread.status === 'tracking')
+        ? threadEmptyHtml(sel.thread)
+        : '<div class="state">Nothing here yet — the next sync will fill this in.</div>';
+      countEl.textContent = '0 stories';
       return;
     }
     var rows = sortedRows();
-    countEl.textContent = 'showing ' + rows.length + ' stor' + (rows.length === 1 ? 'y' : 'ies');
+    countEl.textContent = rows.length + ' stor' + (rows.length === 1 ? 'y' : 'ies');
     feedEl.innerHTML = rows.map(tileHtml).join('');
   }
   feedEl.addEventListener('click', function (e) {
     var btn = e.target.closest('.act');
     if (!btn) return;
-    toast(btn.getAttribute('data-act') === 'save' ? 'Saving — coming soon' : 'Threads — coming soon');
+    var act = btn.getAttribute('data-act');
+    if (act === 'thread') {
+      var tile = btn.closest('.tile');
+      var sid = tile && tile.getAttribute('data-story-id');
+      var story = stories.filter(function (s) { return s.id === sid; })[0];
+      if (story) openThreadSheet(story);
+      return;
+    }
+    toast('Saving — coming soon');
   });
   sortEl.addEventListener('change', renderFeed);
 
@@ -1008,7 +1544,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     else {
       try {
         var rows = unwrap(await sb.from('threads')
-          .select('id,subpage_id,title,description,derived_query,status')
+          .select('id,subpage_id,title,description,derived_query,status,match_count,last_match_at')
           .eq('subpage_id', sp.id).order('position'));
         sp._threads = Array.isArray(rows) ? rows : [];
       } catch (e) { sp._threads = []; }

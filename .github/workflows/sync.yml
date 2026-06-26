@@ -1,0 +1,37 @@
+name: Desk sync (ingest + enrich + route + health)
+
+# Runs the whole pipeline on autopilot twice a day, plus a manual button.
+#
+# Schedule is in UTC. 13:00 UTC ≈ 6am Pacific, 01:00 UTC ≈ 6pm Pacific.
+# Daylight Saving Time shifts these by ~1 hour across the year — that's fine,
+# the sync time is approximate by design (the UI countdown is approximate too).
+on:
+  schedule:
+    - cron: "0 13,1 * * *"
+  workflow_dispatch:   # lets you run it manually from the Actions tab anytime
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the sync
+        # No .env in CI — config.py falls back to reading these from the
+        # environment (os.getenv), which is exactly what we pass in here.
+        # These secrets already exist in the repo's Actions secrets.
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          OPENSTATES_API_KEY: ${{ secrets.OPENSTATES_API_KEY }}
+        run: python ingest/run_ingest.py
