@@ -1079,25 +1079,43 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   // STEP 3 — give brand-new users a fresh starter Desk. Do NOT set user_id:
   // the column default auth.uid() stamps it to the signed-in user.
   async function ensureStarterSet() {
-    var existing = unwrap(await sb.from('pages').select('id').limit(1));
-    if (existing && existing.length) return;  // already has pages — nothing to do
+    // Seed only a brand-new account: if the user ALREADY has any pages, skip
+    // seeding entirely. This is what stops the starter set being re-created
+    // (and duplicated) on every login.
+    var existingPages = unwrap(await sb.from('pages').select('id,slug')) || [];
+    if (existingPages.length) return;
 
-    var createdPages = unwrap(await sb.from('pages').insert([
+    // Belt-and-suspenders: even while seeding, never insert a page whose slug
+    // already exists for this user (guards against a second run racing in).
+    var haveSlugs = existingPages.map(function (p) { return p.slug; });
+    var wantPages = [
       { title: 'CA Leg + Labor', slug: 'ca-leg-labor', position: 0 },
       { title: 'Local Bay', slug: 'local-bay', position: 1 },
       { title: 'National', slug: 'national', position: 2 },
       { title: 'International', slug: 'international', position: 3 }
-    ]).select());
+    ].filter(function (p) { return haveSlugs.indexOf(p.slug) === -1; });
 
-    var ca = (createdPages || []).filter(function (p) { return p.slug === 'ca-leg-labor'; })[0];
+    var createdPages = wantPages.length
+      ? (unwrap(await sb.from('pages').insert(wantPages).select()) || [])
+      : [];
+
+    var ca = createdPages.concat(existingPages)
+      .filter(function (p) { return p.slug === 'ca-leg-labor'; })[0];
     if (!ca) return;
 
-    await sb.from('subpages').insert([
+    // Same duplicate guard for subpages: never insert one whose title already
+    // exists under this page, so a user can never end up with two subpages of
+    // the same title from seeding.
+    var haveTitles = (unwrap(await sb.from('subpages').select('title').eq('page_id', ca.id)) || [])
+      .map(function (s) { return s.title; });
+    var wantSubs = [
       { page_id: ca.id, title: 'State legislature & bills', slug: 'state-legislature-bills', status: 'pending', position: 0 },
       { page_id: ca.id, title: 'Labor campaigns', slug: 'labor-campaigns', status: 'pending', position: 1 },
       { page_id: ca.id, title: 'State prop campaigns', slug: 'state-prop-camp', status: 'pending', position: 2 },
       { page_id: ca.id, title: 'Midterm / Congress', slug: 'midterm-congress', status: 'pending', position: 3 }
-    ]);
+    ].filter(function (s) { return haveTitles.indexOf(s.title) === -1; });
+
+    if (wantSubs.length) await sb.from('subpages').insert(wantSubs);
   }
 
   async function loadPages() {
