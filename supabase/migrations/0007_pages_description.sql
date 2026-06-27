@@ -1,0 +1,19 @@
+-- ===========================================================================
+-- 0007_pages_description.sql — give pages a human-readable description/subtitle
+--
+-- Why this is needed (for the Organize screen):
+-- The Organize view lets you edit a one-line description on every card,
+-- including TOP PAGES. Sub-pages and threads already have a `description`
+-- column (added in 0003); pages did not. This adds the same column to pages.
+--
+-- A page's description is COSMETIC only — pages are region-based (see the
+-- REGION map in app/index.html), so they have no AI-built search query and
+-- editing one never re-pends anything. The description simply replaces the
+-- canned intro line under the page headline in the reading view when set.
+--
+-- This change is additive and safe: the column is nullable, nothing else is
+-- altered, and the app is written to work whether or not this migration has
+-- been applied (it falls back to the canned intro copy). Run it once in the
+-- Supabase SQL Editor, the same way you ran 0001–0006.
+-- ===========================================================================
+alter table pages add column if not exists description text;

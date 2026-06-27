@@ -465,6 +465,86 @@
   }
   .ts-empty, .ts-loading { color: var(--muted); font-size: 13px; line-height: 1.5; }
 
+  /* ===== Organize mode ===== */
+  /* The Organize view is a "mode": the reading pieces hide and #organizeRoot
+     shows, while the header + breadcrumb strip stay put. */
+  #organizeRoot { display: none; }
+  body.organizing #organizeRoot { display: block; }
+  body.organizing #nav,
+  body.organizing #pageHeader,
+  body.organizing #pendingQueue,
+  body.organizing #subnav,
+  body.organizing #formHost,
+  body.organizing .feed-head,
+  body.organizing .hairline,
+  body.organizing #feed { display: none !important; }
+
+  .org-top { margin-bottom: 10px; }
+  .org-head { margin: 4px 0 22px; }
+  .org-section { margin-bottom: 30px; }
+  .org-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+  .org-empty { color: var(--muted); font-size: 13.5px; padding: 6px 2px; }
+
+  .org-card {
+    background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: box-shadow .2s var(--spring);
+  }
+  .org-card.focused { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-wash), var(--shadow); }
+  .org-card.dragging { opacity: .45; }
+  /* drop indicator drawn with inset shadow so the row never shifts during drag */
+  .org-card.drop-before { box-shadow: inset 0 3px 0 var(--accent), var(--shadow); }
+  .org-card.drop-after  { box-shadow: inset 0 -3px 0 var(--accent), var(--shadow); }
+
+  .org-grip {
+    cursor: grab; color: var(--muted); font-size: 18px; line-height: 1;
+    padding-top: 8px; user-select: none; letter-spacing: -2px;
+  }
+  .org-grip:active { cursor: grabbing; }
+
+  .org-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .org-title, .org-desc {
+    font-family: var(--font-sans); color: var(--ink);
+    border: 1px solid var(--hair); border-radius: 12px; padding: 9px 12px; width: 100%;
+    background: var(--bg-tint);
+  }
+  .org-title { font-weight: 800; font-size: 15px; }
+  .org-desc { font-size: 13.5px; }
+  .org-title:focus, .org-desc:focus { outline: none; border-color: var(--accent); }
+
+  .org-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .org-chip {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--muted);
+    background: var(--bg-tint); border: 1px solid var(--hair);
+    padding: 3px 10px; border-radius: 999px; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .org-chip.pending { background: var(--live-wash); color: var(--live); border-color: transparent; }
+  .org-rebuild {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 500;
+    background: var(--accent-wash); color: var(--accent);
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .org-card-actions { display: flex; align-items: center; }
+  .org-open {
+    font-family: var(--font-sans); font-weight: 700; font-size: 12.5px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    padding: 7px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    transition: transform .2s var(--spring), background .2s ease, color .2s ease;
+  }
+  .org-open:hover { transform: translateY(-1px); background: var(--accent-wash); color: var(--accent); border-color: var(--accent-wash); }
+  .org-add {
+    font-family: var(--font-sans); font-weight: 700; font-size: 13.5px;
+    background: transparent; color: var(--accent);
+    border: 1px dashed var(--accent); border-radius: 999px;
+    padding: 9px 16px; cursor: pointer;
+    transition: background .2s ease, transform .2s var(--spring);
+  }
+  .org-add:hover { background: var(--accent-wash); transform: translateY(-1px); }
+  body.compact .org-card { padding: 11px 13px; }
+  body.compact .org-section { margin-bottom: 20px; }
+
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
   }
@@ -500,6 +580,7 @@
     </div>
     <div class="top-actions">
       <span class="next-refresh" id="nextRefresh">Next refresh in —</span>
+      <button class="icon-btn" id="organizeBtn" title="Organize your pages, sub-pages & threads">⌗ Organize</button>
       <button class="icon-btn" id="gearBtn" title="Appearance">⚙︎ Appearance</button>
       <button class="icon-btn" id="signoutBtn" title="Sign out">Sign out</button>
     </div>
@@ -534,6 +615,9 @@
     <div class="skeleton"></div>
     <div class="skeleton"></div>
   </div>
+
+  <!-- Organize mode lives here; hidden until the ORGANIZE button toggles it on -->
+  <div id="organizeRoot"></div>
 </div>
 
 <!-- appearance sheet -->
@@ -607,6 +691,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   var toastEl   = document.getElementById('toast');
   var gearBtn   = document.getElementById('gearBtn');
   var signoutBtn= document.getElementById('signoutBtn');
+  var organizeBtn  = document.getElementById('organizeBtn');
+  var organizeRoot = document.getElementById('organizeRoot');
   var sheetEl   = document.getElementById('sheet');
   var sheetClose= document.getElementById('sheetClose');
   var swatchesEl= document.getElementById('swatches');
@@ -1101,7 +1187,15 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   }
 
   async function loadPages() {
-    var data = unwrap(await sb.from('pages').select('id,title,slug,position').order('position'));
+    // Prefer selecting the optional `description` column (migration 0007). If
+    // that migration hasn't been applied yet the column doesn't exist and the
+    // query errors — fall back to the original select so the app still boots.
+    var data;
+    try {
+      data = unwrap(await sb.from('pages').select('id,title,slug,position,description').order('position'));
+    } catch (e) {
+      data = unwrap(await sb.from('pages').select('id,title,slug,position').order('position'));
+    }
     if (!data || !data.length) { showError('No pages found for your account.'); return; }
     pages = data;
     selectPage(pages[0]);
@@ -1147,7 +1241,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       var meta = pageMeta(sel.page.slug);
       eyebrow = meta.eyebrow + ' · ' + updated;
       headline = sel.page.title;
-      intro = meta.intro;
+      // a page's own description (set in Organize) wins over the canned intro
+      intro = hasText(sel.page.description) ? sel.page.description : meta.intro;
     }
     pageHeaderEl.innerHTML =
       '<div class="eyebrow">' + esc(eyebrow) + '</div>' +
@@ -1672,6 +1767,406 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     renderSubnav();
     loadStories();
   }
+
+  // =========================================================================
+  // ORGANIZE MODE
+  //
+  // A "mode" layered over the same data the reading view uses. It reorders and
+  // renames pages / sub-pages / threads in place on the shared caches (pages,
+  // page._subpages, subpage._threads), so exiting reflects every change with no
+  // reload. The currently-focused page (sel.page) and sub-page (sel.subpage)
+  // decide which sub-page / thread sections are shown — the same selection the
+  // reading view was on when ORGANIZE was pressed.
+  // =========================================================================
+
+  // ids of items re-pended during THIS organize session, so we can show the
+  // "will rebuild at next refresh" badge on exactly the ones the user edited.
+  var orgEdited = {};
+  // drag bookkeeping (within-level only — see orgMove)
+  var dragKind = null, dragId = null;
+
+  // ---- cache helpers: Organize reads/writes the same arrays the nav uses ----
+  function orgList(kind) {
+    if (kind === 'page') return pages;
+    if (kind === 'subpage') return (sel.page && sel.page._subpages) || [];
+    return (sel.subpage && sel.subpage._threads) || [];
+  }
+  function orgFindRow(kind, id) {
+    return orgList(kind).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function orgTable(kind) {
+    return kind === 'page' ? 'pages' : (kind === 'subpage' ? 'subpages' : 'threads');
+  }
+
+  // lazily fetch + cache a page's sub-pages / a sub-page's threads (mirrors the
+  // selects used by selectPage / selectSubpage so the row shapes match)
+  async function ensureSubpagesLoaded(p) {
+    if (p._subpages) return;
+    try {
+      var rows = unwrap(await sb.from('subpages')
+        .select('id,page_id,title,slug,query,status,description')
+        .eq('page_id', p.id).order('position'));
+      p._subpages = Array.isArray(rows) ? rows : [];
+    } catch (e) { p._subpages = []; }
+  }
+  async function ensureThreadsLoaded(sp) {
+    if (sp._threads) return;
+    try {
+      var rows = unwrap(await sb.from('threads')
+        .select('id,subpage_id,title,description,derived_query,status,match_count,last_match_at')
+        .eq('subpage_id', sp.id).order('position'));
+      sp._threads = Array.isArray(rows) ? rows : [];
+    } catch (e) { sp._threads = []; }
+  }
+
+  // ---- rendering ----
+  function orgChip(kind, row) {
+    if (kind === 'page') {
+      var region = REGION[row.slug];
+      return '<span class="org-chip">region · ' + esc(region || row.slug || '—') + '</span>';
+    }
+    var q = kind === 'subpage' ? row.query : row.derived_query;
+    if (hasText(q)) return '<span class="org-chip">query · ' + esc(q) + '</span>';
+    return '<span class="org-chip pending">building next sync</span>';
+  }
+  function orgRebuildBadge(kind, row) {
+    return (kind !== 'page' && orgEdited[row.id])
+      ? '<span class="org-rebuild">↻ will rebuild at next refresh</span>' : '';
+  }
+  function orgCardHtml(kind, row, focusedId) {
+    var isFocused = (kind !== 'thread') && (row.id === focusedId);
+    var openBtn = '';
+    if (kind === 'page') openBtn = '<button class="org-open" data-open="page">View sub-pages →</button>';
+    else if (kind === 'subpage') openBtn = '<button class="org-open" data-open="subpage">View threads →</button>';
+    var descPlaceholder = kind === 'page'
+      ? 'One line — a subtitle for this page'
+      : 'One line — becomes the search query on next sync';
+    return '<div class="org-card' + (isFocused ? ' focused' : '') + '" data-kind="' + kind + '" data-id="' + esc(row.id) + '">' +
+        '<div class="org-grip" title="Drag to reorder">⠿</div>' +
+        '<div class="org-fields">' +
+          '<input class="org-title" data-field="title" value="' + esc(row.title || '') + '" placeholder="Title" autocomplete="off">' +
+          '<input class="org-desc" data-field="description" value="' + esc(row.description || '') + '" placeholder="' + esc(descPlaceholder) + '" autocomplete="off">' +
+          '<div class="org-meta">' + orgChip(kind, row) + orgRebuildBadge(kind, row) + '</div>' +
+        '</div>' +
+        (openBtn ? '<div class="org-card-actions">' + openBtn + '</div>' : '') +
+      '</div>';
+  }
+  function orgSectionHtml(label, labelId, level, rows, focusedId, addLabel, addKind) {
+    var cards = rows.length
+      ? rows.map(function (r) { return orgCardHtml(level, r, focusedId); }).join('')
+      : '<div class="org-empty">Nothing here yet.</div>';
+    return '<div class="org-section">' +
+      '<div class="section-label"' + (labelId ? ' id="' + labelId + '"' : '') + '>' + esc(label) + '</div>' +
+      '<div class="hairline"></div>' +
+      '<div class="org-cards" data-level="' + level + '">' + cards + '</div>' +
+      '<button class="org-add" data-add="' + addKind + '">' + esc(addLabel) + '</button>' +
+    '</div>';
+  }
+  function renderOrganize() {
+    if (!sel.page) { organizeRoot.innerHTML = ''; return; }
+    var html = '';
+    html += '<div class="org-top"><button class="btn ghost org-back">← Back to reading</button></div>';
+    html += '<div class="org-head">' +
+      '<div class="eyebrow">ORGANIZE</div>' +
+      '<h1 class="page-h1">Pages, sub-pages &amp; threads</h1>' +
+      '<p class="page-intro">Drag the handle to reorder within a level. Edit a title or one-line description, then click away to save — for sub-pages and threads that sends it back to <b>pending</b> and the next sync rewrites its search query from what you typed. Pages are region-based, so editing a page is just cosmetic.</p>' +
+    '</div>';
+
+    // TOP PAGES
+    html += orgSectionHtml(
+      'TOP PAGES · DRAG TO REORDER', null, 'page',
+      pages, sel.page.id, '+ Add a top page', 'page');
+
+    // SUB-PAGES under the focused page
+    html += orgSectionHtml(
+      'SUB-PAGES UNDER ‘' + sel.page.title + '’', 'orgSubLabel', 'subpage',
+      (sel.page._subpages || []), (sel.subpage ? sel.subpage.id : null),
+      '+ Add a sub-page', 'subpage');
+
+    // THREADS under the focused sub-page (only when one is focused)
+    if (sel.subpage) {
+      html += orgSectionHtml(
+        'THREADS IN ‘' + sel.subpage.title + '’', 'orgThreadLabel', 'thread',
+        (sel.subpage._threads || []), null, '+ Add a thread', 'thread');
+    }
+
+    organizeRoot.innerHTML = html;
+  }
+
+  // keep the two section headers in sync after an inline title edit (cheaper
+  // than a full re-render, and it won't disturb input focus)
+  function updateOrgHeaders() {
+    var subL = document.getElementById('orgSubLabel');
+    if (subL && sel.page) subL.textContent = 'SUB-PAGES UNDER ‘' + sel.page.title + '’';
+    var thL = document.getElementById('orgThreadLabel');
+    if (thL && sel.subpage) thL.textContent = 'THREADS IN ‘' + sel.subpage.title + '’';
+  }
+  function updateCardMeta(kind, row, card) {
+    var meta = card.querySelector('.org-meta');
+    if (meta) meta.innerHTML = orgChip(kind, row) + orgRebuildBadge(kind, row);
+  }
+  function focusOrgInput(id, field) {
+    var el = organizeRoot.querySelector('.org-card[data-id="' + id + '"] .org-' + field);
+    if (el) { el.focus(); el.select(); }
+  }
+
+  // ---- inline edit (save on blur / Enter) ----
+  function onOrgFieldBlur(input) {
+    var card = input.closest('.org-card'); if (!card) return;
+    var kind = card.getAttribute('data-kind');
+    var id = card.getAttribute('data-id');
+    var field = input.getAttribute('data-field');
+    var row = orgFindRow(kind, id); if (!row) return;
+    var val = input.value.trim();
+    if (field === 'title' && !val) {
+      input.value = row.title || '';
+      toast('Give it a title first');
+      return;
+    }
+    if (val === (row[field] || '')) return;   // nothing changed
+    saveOrgField(kind, row, field, val, card);
+  }
+
+  async function saveOrgField(kind, row, field, val, card) {
+    // CRITICAL: editing a sub-page or thread's title/description re-pends it
+    // (status -> 'pending', query/derived_query -> null) so the NEXT SYNC
+    // rebuilds the query from the new text. Pages are cosmetic — never re-pend.
+    // We never send `slug`, so the row's underlying identity stays fixed.
+    var repend = (kind !== 'page');
+    var update = {};
+    update[field] = val;
+    if (repend) {
+      update.status = 'pending';
+      if (kind === 'subpage') update.query = null; else update.derived_query = null;
+    }
+    try {
+      unwrap(await sb.from(orgTable(kind)).update(update).eq('id', row.id));
+      row[field] = val;
+      if (repend) {
+        row.status = 'pending';
+        if (kind === 'subpage') row.query = null; else row.derived_query = null;
+        orgEdited[row.id] = true;
+      }
+      updateCardMeta(kind, row, card);
+      if (field === 'title') updateOrgHeaders();
+      if (repend) loadPendingQueue();   // refresh the "Building at next refresh" list
+      toast(repend ? 'Saved — rebuilds next sync' : 'Saved');
+    } catch (err) {
+      toast('Could not save — try again');
+    }
+  }
+
+  // ---- reorder (within-level only; updates the `position` column) ----
+  function clearDropMarks() {
+    Array.prototype.forEach.call(organizeRoot.querySelectorAll('.org-card'), function (c) {
+      c.classList.remove('drop-before', 'drop-after');
+    });
+  }
+  function persistPositions(kind) {
+    var list = orgList(kind);
+    var table = orgTable(kind);
+    var ops = list.map(function (row, i) {
+      row.position = i;
+      return sb.from(table).update({ position: i }).eq('id', row.id);
+    });
+    Promise.all(ops).catch(function () { toast('Could not save the new order'); });
+  }
+  function indexOfId(list, id) {
+    for (var i = 0; i < list.length; i++) { if (list[i].id === id) return i; }
+    return -1;
+  }
+  function orgMove(kind, fromId, toId, after) {
+    if (fromId === toId) return;
+    var list = orgList(kind);
+    var fromIdx = indexOfId(list, fromId);
+    if (fromIdx < 0) return;
+    var item = list.splice(fromIdx, 1)[0];
+    var toIdx = indexOfId(list, toId);      // recompute after the removal
+    if (toIdx < 0) { list.splice(fromIdx, 0, item); return; }
+    list.splice(after ? toIdx + 1 : toIdx, 0, item);
+    persistPositions(kind);
+    renderOrganize();
+  }
+
+  // ---- focus a different page / sub-page ----
+  async function orgOpen(kind, id) {
+    if (kind === 'page') {
+      var p = orgFindRow('page', id); if (!p) return;
+      sel.page = p; sel.subpage = null; sel.thread = null;
+      await ensureSubpagesLoaded(p);
+    } else if (kind === 'subpage') {
+      var sp = orgFindRow('subpage', id); if (!sp) return;
+      sel.subpage = sp; sel.thread = null;
+      await ensureThreadsLoaded(sp);
+    }
+    renderOrganize();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ---- add (same shape as the existing create flow) ----
+  function uniquePageSlug(base) {
+    var slug = slugify(base);
+    var taken = {};
+    pages.forEach(function (p) { taken[p.slug] = true; });
+    if (!taken[slug]) return slug;
+    var i = 2;
+    while (taken[slug + '-' + i]) i++;
+    return slug + '-' + i;
+  }
+  async function addPage() {
+    var body = { title: 'New page', slug: uniquePageSlug('new-page'), position: pages.length };
+    try {
+      var rows = unwrap(await sb.from('pages').insert(body).select());
+      var created = (Array.isArray(rows) && rows.length) ? rows[0] : body;
+      created._subpages = [];   // brand-new page has no sub-pages
+      pages.push(created);
+      renderOrganize();
+      focusOrgInput(created.id, 'title');
+      toast('Page added');
+    } catch (e) { toast('Could not add the page'); }
+  }
+  async function addSubpage() {
+    if (!sel.page) return;
+    var list = sel.page._subpages || (sel.page._subpages = []);
+    var body = {
+      page_id: sel.page.id, title: 'New sub-page', slug: slugify('New sub-page'),
+      description: '', status: 'pending', query: null, position: list.length
+    };
+    try {
+      var rows = unwrap(await sb.from('subpages').insert(body).select());
+      var created = (Array.isArray(rows) && rows.length) ? rows[0] : body;
+      list.push(created);
+      renderOrganize();
+      focusOrgInput(created.id, 'title');
+      loadPendingQueue();
+      toast('Sub-page added — query builds next sync');
+    } catch (e) { toast('Could not add the sub-page'); }
+  }
+  async function addThread() {
+    if (!sel.subpage) return;
+    // same per-user thread cap as the reading-view create flows
+    try {
+      var res = await sb.from('threads').select('id', { count: 'exact', head: true });
+      if (res.error) throw res.error;
+      if ((res.count || 0) >= THREAD_CAP) {
+        toast("You've hit your thread limit (" + THREAD_CAP + ") — archive one to add another");
+        return;
+      }
+    } catch (e) {
+      toast('Could not check your thread count — try again');
+      return;
+    }
+    var list = sel.subpage._threads || (sel.subpage._threads = []);
+    var body = {
+      subpage_id: sel.subpage.id, title: 'New thread', description: '',
+      status: 'pending', derived_query: null, position: list.length
+    };
+    try {
+      var rows = unwrap(await sb.from('threads').insert(body).select());
+      var created = (Array.isArray(rows) && rows.length) ? rows[0] : body;
+      list.push(created);
+      renderOrganize();
+      focusOrgInput(created.id, 'title');
+      loadPendingQueue();
+      toast('Thread added — query builds next sync');
+    } catch (e) { toast('Could not add the thread'); }
+  }
+
+  // ---- enter / exit ----
+  async function enterOrganize() {
+    if (document.body.classList.contains('organizing')) return;
+    if (!sel.page) { toast('Still loading your pages…'); return; }
+    closeForm();
+    await ensureSubpagesLoaded(sel.page);
+    if (sel.subpage) await ensureThreadsLoaded(sel.subpage);
+    document.body.classList.add('organizing');
+    crumbEl.innerHTML = '<span class="seg">~</span><span class="sep">/</span><span class="seg">organize</span>';
+    renderOrganize();
+    window.scrollTo(0, 0);
+  }
+  function exitOrganize() {
+    document.body.classList.remove('organizing');
+    organizeRoot.innerHTML = '';
+    // rebuild the reading view from the (now-edited) caches
+    setCrumb();
+    renderNav();
+    renderSubnav();
+    loadStories();   // a re-pended sub-page/thread now shows its pending state
+  }
+
+  organizeBtn.addEventListener('click', enterOrganize);
+
+  // ---- delegated wiring (organizeRoot is stable; its innerHTML is rebuilt) ----
+  organizeRoot.addEventListener('click', function (e) {
+    if (e.target.closest('.org-back')) { exitOrganize(); return; }
+    var add = e.target.closest('.org-add');
+    if (add) {
+      var w = add.getAttribute('data-add');
+      if (w === 'page') addPage();
+      else if (w === 'subpage') addSubpage();
+      else addThread();
+      return;
+    }
+    var open = e.target.closest('.org-open');
+    if (open) {
+      var card = open.closest('.org-card');
+      orgOpen(open.getAttribute('data-open'), card.getAttribute('data-id'));
+    }
+  });
+  organizeRoot.addEventListener('focusout', function (e) {
+    var input = e.target.closest('.org-title, .org-desc');
+    if (input) onOrgFieldBlur(input);
+  });
+  organizeRoot.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var input = e.target.closest('.org-title, .org-desc');
+    if (input) { e.preventDefault(); input.blur(); }   // blur triggers the save
+  });
+  // drag only starts from the grip, so the text inputs stay freely selectable
+  organizeRoot.addEventListener('mousedown', function (e) {
+    var grip = e.target.closest('.org-grip');
+    if (grip) { var c = grip.closest('.org-card'); if (c) c.setAttribute('draggable', 'true'); }
+  });
+  // if a grip press didn't turn into a drag, drop the draggable flag again so
+  // the card's text inputs stay freely selectable
+  document.addEventListener('mouseup', function () {
+    if (!document.body.classList.contains('organizing')) return;
+    Array.prototype.forEach.call(organizeRoot.querySelectorAll('.org-card[draggable="true"]'), function (c) {
+      c.setAttribute('draggable', 'false');
+    });
+  });
+  organizeRoot.addEventListener('dragstart', function (e) {
+    var card = e.target.closest('.org-card'); if (!card) return;
+    dragKind = card.getAttribute('data-kind');
+    dragId = card.getAttribute('data-id');
+    card.classList.add('dragging');
+    if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {} }
+  });
+  organizeRoot.addEventListener('dragover', function (e) {
+    var card = e.target.closest('.org-card'); if (!card || !dragKind) return;
+    if (card.getAttribute('data-kind') !== dragKind) return;   // within-level only
+    e.preventDefault();
+    var r = card.getBoundingClientRect();
+    var after = (e.clientY - r.top) > r.height / 2;
+    clearDropMarks();
+    card.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+  organizeRoot.addEventListener('drop', function (e) {
+    var card = e.target.closest('.org-card'); if (!card || !dragKind) return;
+    if (card.getAttribute('data-kind') !== dragKind) return;
+    e.preventDefault();
+    var r = card.getBoundingClientRect();
+    var after = (e.clientY - r.top) > r.height / 2;
+    var toId = card.getAttribute('data-id');
+    clearDropMarks();
+    orgMove(dragKind, dragId, toId, after);
+  });
+  organizeRoot.addEventListener('dragend', function (e) {
+    var card = e.target.closest('.org-card');
+    if (card) { card.classList.remove('dragging'); card.setAttribute('draggable', 'false'); }
+    clearDropMarks();
+    dragKind = null; dragId = null;
+  });
 })();
 </script>
 </body>
