@@ -36,7 +36,7 @@ GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 # How long to wait (seconds) between GDELT queries. We now run MANY more queries
 # than before — the base SEARCHES list PLUS one query for every user's tracking
 # thread — so without a pause GDELT starts returning "429 too many requests".
-QUERY_DELAY_SECONDS = 3
+QUERY_DELAY_SECONDS = 8
 
 
 # ---------------------------------------------------------------------------

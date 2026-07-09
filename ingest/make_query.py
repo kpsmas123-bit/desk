@@ -133,7 +133,7 @@ def build_pending_queries() -> int:
             supabase.table("subpages").update(
                 {"query": result["tsquery"], "status": "tracking"}
             ).eq("id", sp["id"]).execute()
-            print(f"Built query for: {sp.get('title', '(untitled subpage)')}")
+            print(f"Built subpage query for: {sp.get('title', '(untitled subpage)')}")
             built += 1
         except Exception as error:
             print(f"  (skipped subpage '{sp.get('title')}' — will retry next run: {error})")
