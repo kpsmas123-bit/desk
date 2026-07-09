@@ -183,6 +183,14 @@
     background:none; border:none; color:var(--green); font-weight:600;
     text-decoration:underline; cursor:pointer; font-size:.85rem; padding:4px;
   }
+  /* Legal certification disclosure the signer must read before signing.
+     Readable body text (Bitter) — deliberately NOT fine print. */
+  .cert-statement{
+    font-family:var(--font-body);
+    font-size:.98rem; line-height:1.55; color:var(--ink);
+    background:#f4f8f4; border:1px solid #cfe3d5; border-left:4px solid var(--green);
+    border-radius:10px; padding:14px 16px; margin:0 0 14px;
+  }
 
   /* Certification gate ------------------------------------------------- */
   .cert{
@@ -402,6 +410,13 @@
 
         <!-- ===== Signature ===== -->
         <h2>Your Signature</h2>
+
+        <!-- [EDIT-TEXT] Legal certification disclosure. The signer must READ this
+             before signing. Verbatim from the official receipt — DO NOT alter. -->
+        <p class="cert-statement">
+          I understand that the purpose of this contribution is to help the above-named candidate qualify for Fair Elections campaign funding as prescribed by the Berkeley Charter, Article III (Elections) and Berkeley Municipal Code Chapter 2.12 (Election Reform Act). I have made this contribution without coercion or reimbursement. I certify that I am a Berkeley resident.
+        </p>
+
         <p class="sig-hint" style="margin:0 0 6px">
           Sign with your finger or mouse. By law this must be hand-drawn — there is no type-to-sign option.</p>
 
@@ -533,12 +548,17 @@ const BUCKET_NAME       = "receipts";
      • The signature underline sits at y ≈ 274.6, x from ~40 to ~385.
      • The date underline     sits at y ≈ 274.6, x from ~405 to ~570.
    We place content so it rests ON those lines. TUNE these after a test print.
+
+   IMPORTANT: the signature PNG is TRIMMED to the drawn strokes before stamping
+   (see trimSignatureToInk()), so these numbers position the actual ink — not a
+   canvas full of transparent padding. That's what keeps placement reliable no
+   matter where on the pad the person signs.
 --------------------------------------------------------------------- */
 const SIG = {
-  x: 55,        // left edge of the signature image
-  yBaseline: 276, // the underline y; image bottom rests here (tuned to sit on the line)
-  maxWidth: 300,  // signature scaled to fit within this width…
-  maxHeight: 40   // …and this height (whitespace above the line)
+  X: 60,          // LEFT edge of the signature, in PDF points (origin = bottom-left)
+  Y: 278,         // BOTTOM of the signature — rests just above the underline (y≈274.6)
+  WIDTH: 240,     // trimmed signature scaled to fit within this WIDTH…
+  HEIGHT: 30      // …and this HEIGHT (aspect ratio preserved; smaller limit wins)
 };
 const DATEPOS = {
   x: 410,        // left edge of the printed date
@@ -716,6 +736,39 @@ function collect(){
   };
 }
 
+// ---- Trim the signature to its ink -----------------------------------
+// signature_pad exports the ENTIRE canvas as a PNG — mostly transparent, with
+// the drawn strokes wherever the person happened to sign (usually the middle).
+// Those transparent margins are what pushed the stamp too high on the PDF. Here
+// we scan the canvas for non-transparent pixels, find the tight bounding box of
+// the actual ink, and return a cropped PNG (data URL + pixel size). This makes
+// PDF placement depend only on SIG.X/Y/WIDTH/HEIGHT, not on where they drew.
+// Returns null if the canvas is blank.
+function trimSignatureToInk(){
+  const w = canvas.width, h = canvas.height;
+  if (!w || !h) return null;
+  const data = canvas.getContext("2d").getImageData(0, 0, w, h).data;
+  const ALPHA = 12; // ignore near-transparent anti-aliasing fuzz
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++){
+    for (let x = 0; x < w; x++){
+      if (data[(y * w + x) * 4 + 3] > ALPHA){
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX || maxY < minY) return null; // nothing drawn
+  const pad = 8; // a few px of breathing room so strokes aren't clipped at the edge
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+  maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
+  const cw = maxX - minX + 1, ch = maxY - minY + 1;
+  const out = document.createElement("canvas");
+  out.width = cw; out.height = ch;
+  out.getContext("2d").drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+  return { dataUrl: out.toDataURL("image/png"), width: cw, height: ch };
+}
+
 // ---- Build the filled + flattened + signed PDF -----------------------
 async function buildPdf(data){
   // Decode embedded base64 -> bytes.
@@ -804,18 +857,18 @@ async function buildPdf(data){
   // ---- Overlay signature (PNG) + date on page 1 (flat content) ----
   const page = pdfDoc.getPages()[0];
 
-  // Signature image, scaled to fit SIG.maxWidth x SIG.maxHeight, resting on the line.
-  const pngDataUrl = signaturePad.toDataURL("image/png");
-  // Guard: a 0-size or un-laid-out canvas yields "data:," (not a real PNG).
-  if (!/^data:image\/png;base64,/.test(pngDataUrl)) {
+  // Signature: TRIM to the drawn strokes first (see trimSignatureToInk), then
+  // scale to fit SIG.WIDTH x SIG.HEIGHT and rest the BOTTOM on SIG.Y.
+  const trimmed = trimSignatureToInk();
+  if (!trimmed) {
     throw new Error("Signature could not be read — please re-draw your signature and try again.");
   }
-  const pngBytes = Uint8Array.from(atob(pngDataUrl.split(",")[1]), c => c.charCodeAt(0));
+  const pngBytes = Uint8Array.from(atob(trimmed.dataUrl.split(",")[1]), c => c.charCodeAt(0));
   const pngImg = await pdfDoc.embedPng(pngBytes);
   let w = pngImg.width, h = pngImg.height;
-  const scale = Math.min(SIG.maxWidth / w, SIG.maxHeight / h);
+  const scale = Math.min(SIG.WIDTH / w, SIG.HEIGHT / h);
   w *= scale; h *= scale;
-  page.drawImage(pngImg, { x: SIG.x, y: SIG.yBaseline, width: w, height: h });
+  page.drawImage(pngImg, { x: SIG.X, y: SIG.Y, width: w, height: h });
 
   // Date text on the DATE line.
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
