@@ -3,3 +3,4 @@ supabase
 requests
 anthropic
 feedparser
+tavily-python
