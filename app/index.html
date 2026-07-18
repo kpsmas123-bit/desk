@@ -310,11 +310,31 @@
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ===== login screen ===== */
+  /* ===== login screen (overlay modal, hidden by default) ===== */
   .login {
-    min-height: 100vh; display: none; align-items: center; justify-content: center;
+    display: none; align-items: center; justify-content: center;
     padding: 24px;
+    position: fixed; inset: 0; z-index: 70;
+    background: rgba(20,21,28,.42);
   }
+  .login.show { display: flex; }
+  .login-close {
+    position: absolute; top: 16px; right: 16px;
+    border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+    width: 34px; height: 34px; border-radius: 999px; cursor: pointer; font-size: 16px;
+  }
+  .login-close:hover { background: var(--bg-tint); }
+
+  /* public mode: hide per-user chrome */
+  body.public-mode .pill-nav-hide,
+  body.public-mode .crumbbar,
+  body.public-mode .subnav,
+  body.public-mode #nav,
+  body.public-mode #pendingQueue,
+  body.public-mode #formHost,
+  body.public-mode #pageHeader,
+  body.public-mode .auth-only,
+  body.public-mode .actions { display: none !important; }
   .login-card {
     background: var(--card); border: 1px solid var(--hair); border-radius: var(--radius);
     box-shadow: var(--shadow-lift); padding: 34px 30px; width: 100%; max-width: 380px;
@@ -554,6 +574,7 @@
 
 <!-- login screen (shown when there is no session) -->
 <div class="login" id="loginScreen">
+  <button class="login-close" id="loginClose" title="Close">✕</button>
   <div class="login-card">
     <div class="login-brand">Desk</div>
     <div class="login-sub" id="loginSub">Your news feed. Sign in to your private desk.</div>
@@ -572,18 +593,19 @@
 </div>
 
 <!-- the app (shown when signed in) -->
-<div class="wrap" id="appRoot" style="display:none">
+<div class="wrap" id="appRoot">
   <div class="top">
     <div class="brandblock">
       <div class="wordmark">DESK</div>
       <div class="tagline">news feed</div>
     </div>
     <div class="top-actions">
-      <span class="next-refresh" id="nextRefresh">Next refresh in —</span>
+      <span class="next-refresh auth-only" id="nextRefresh">Next refresh in —</span>
       <a class="icon-btn" href="briefings.html" title="Thread library">◉ Thread Library</a>
-      <button class="icon-btn" id="organizeBtn" title="Organize your pages, sub-pages & threads">⌗ Organize</button>
-      <button class="icon-btn" id="gearBtn" title="Appearance">⚙︎ Appearance</button>
-      <button class="icon-btn" id="signoutBtn" title="Sign out">Sign out</button>
+      <button class="icon-btn" id="signinBtn" style="display:none">Sign in</button>
+      <button class="icon-btn auth-only" id="organizeBtn" title="Organize your pages, sub-pages & threads">⌗ Organize</button>
+      <button class="icon-btn auth-only" id="gearBtn" title="Appearance">⚙︎ Appearance</button>
+      <button class="icon-btn auth-only" id="signoutBtn" title="Sign out">Sign out</button>
     </div>
   </div>
 
@@ -681,6 +703,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   var loginForgot  = document.getElementById('loginForgot');
   var loginHint    = document.getElementById('loginHint');
   var loginSub     = document.getElementById('loginSub');
+  var loginClose = document.getElementById('loginClose');
+  var signinBtn  = document.getElementById('signinBtn');
   var appRoot   = document.getElementById('appRoot');
   var navEl     = document.getElementById('nav');
   var subnavEl  = document.getElementById('subnav');
@@ -927,8 +951,20 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   // =========================================================================
   // AUTH (email + password)
   // =========================================================================
-  function showLogin() { loginScreen.style.display = 'flex'; appRoot.style.display = 'none'; }
-  function showApp()   { loginScreen.style.display = 'none'; appRoot.style.display = 'block'; }
+  function openLoginOverlay() { loginScreen.classList.add('show'); }
+  function closeLoginOverlay() { loginScreen.classList.remove('show'); }
+
+  function enterPublicMode() {
+    document.body.classList.add('public-mode');
+    signinBtn.style.display = '';
+    closeLoginOverlay();
+    startPublicFeed();
+  }
+  function enterAuthMode() {
+    document.body.classList.remove('public-mode');
+    signinBtn.style.display = 'none';
+    closeLoginOverlay();
+  }
 
   // 'signin' = returning user; 'signup' = creating a new account
   var authMode = 'signin';
@@ -1044,6 +1080,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   setMode('signin');
 
   signoutBtn.addEventListener('click', function () { sb.auth.signOut(); });
+  signinBtn.addEventListener('click', function () { openLoginOverlay(); });
+  loginClose.addEventListener('click', function () { closeLoginOverlay(); });
+  loginScreen.addEventListener('click', function (e) { if (e.target === loginScreen) closeLoginOverlay(); });
 
   // onAuthStateChange fires an INITIAL_SESSION event on subscribe, so it also
   // covers the page-load session check, plus sign-in / sign-up / sign-out.
@@ -1051,11 +1090,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     var uid = session && session.user ? session.user.id : null;
     if (uid) {
       currentUid = uid;
-      showApp();
+      enterAuthMode();
       if (loadedFor !== uid) { loadedFor = uid; startApp(); }
     } else {
       currentUid = null; loadedFor = null;
-      showLogin();
+      enterPublicMode();
     }
   });
 
@@ -1142,6 +1181,24 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       pendingItems = [];
     }
     renderPendingQueue();
+  }
+
+  // =========================================================================
+  // PUBLIC FEED (anonymous visitors — no sign-in required)
+  // =========================================================================
+  async function startPublicFeed() {
+    feedEl.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+    countEl.textContent = 'loading…';
+    try {
+      var data = unwrap(await sb.from('stories').select(STORY_SELECT)
+        .order('relevance_score', { ascending: false, nullsFirst: false })
+        .limit(100));
+      if (!Array.isArray(data)) throw new Error('Expected a list of stories');
+      stories = data;
+      renderFeed();
+    } catch (err) {
+      showError(err.message || String(err));
+    }
   }
 
   // =========================================================================
@@ -1696,6 +1753,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   }
 
   function sectionLabel() {
+    if (!currentUid) return 'LATEST STORIES';
     if (sel.thread) return 'LATEST IN THIS THREAD';
     if (sel.subpage) return 'LATEST IN THIS SUB-PAGE';
     return 'LATEST ACROSS THE BEAT';
