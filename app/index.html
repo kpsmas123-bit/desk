@@ -556,7 +556,7 @@
 <div class="login" id="loginScreen">
   <div class="login-card">
     <div class="login-brand">Desk</div>
-    <div class="login-sub" id="loginSub">Follow your nerdiest threads. Sign in to your private desk.</div>
+    <div class="login-sub" id="loginSub">Your news feed. Sign in to your private desk.</div>
     <div id="loginForm">
       <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
       <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
@@ -576,10 +576,11 @@
   <div class="top">
     <div class="brandblock">
       <div class="wordmark">DESK</div>
-      <div class="tagline">follow your nerdiest threads…</div>
+      <div class="tagline">news feed</div>
     </div>
     <div class="top-actions">
       <span class="next-refresh" id="nextRefresh">Next refresh in —</span>
+      <a class="icon-btn" href="briefings.html" title="Thread library">◉ Thread Library</a>
       <button class="icon-btn" id="organizeBtn" title="Organize your pages, sub-pages & threads">⌗ Organize</button>
       <button class="icon-btn" id="gearBtn" title="Appearance">⚙︎ Appearance</button>
       <button class="icon-btn" id="signoutBtn" title="Sign out">Sign out</button>
@@ -946,7 +947,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       loginPassword.setAttribute('autocomplete', 'new-password');
       loginHint.style.display = 'block';
     } else {
-      loginSub.textContent = 'Follow your nerdiest threads. Sign in to your private desk.';
+      loginSub.textContent = 'Your news feed. Sign in to your private desk.';
       loginBtn.textContent = 'Sign in';
       loginToggle.textContent = 'Create account';
       loginPassword.setAttribute('autocomplete', 'current-password');
@@ -1680,7 +1681,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       '<div class="meta">' + meta + '</div>' +
       '<h2>' + head + '</h2>' + body + bullets + verify + further +
       '<div class="actions">' +
-        '<button class="act" data-act="save">☆ Save</button>' +
         '<button class="act" data-act="thread">+ Thread</button>' +
       '</div>' +
     '</article>';
@@ -1722,9 +1722,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       var sid = tile && tile.getAttribute('data-story-id');
       var story = stories.filter(function (s) { return s.id === sid; })[0];
       if (story) openThreadSheet(story);
-      return;
     }
-    toast('Saving — coming soon');
   });
   sortEl.addEventListener('change', renderFeed);
 
