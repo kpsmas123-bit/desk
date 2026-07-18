@@ -52,27 +52,13 @@ SEARCHES = [
     ('California governor Newsom policy sourcelang:english', "ca"),
     ('California ballot measure proposition sourcelang:english', "ca"),
 
-    # --- California / national labor ---
+    # --- California labor ---
     ('California labor union organizing sourcelang:english', "ca"),
     ('(UPTE OR "academic workers" OR UAW) California university sourcelang:english', "ca"),
-    ('(strike OR "work stoppage" OR "union election") workers sourcelang:english', "national"),
-    ('(Teamsters OR SEIU OR "United Auto Workers") sourcelang:english', "national"),
-    ('"National Labor Relations Board" OR NLRB sourcelang:english', "national"),
-    ('"Working Families Party" OR "labor coalition" sourcelang:english', "national"),
+    ('(strike OR "work stoppage" OR "union election") California workers sourcelang:english', "ca"),
 
-    # --- National politics ---
-    ('Congress legislation vote sourcelang:english', "national"),
-    ('"2026 midterms" OR "midterm election" campaign sourcelang:english', "national"),
-    ('Supreme Court ruling sourcelang:english', "national"),
-
-    # --- Local Bay ---
-    ('("East Bay" OR Oakland OR Berkeley OR "San Francisco") (city council OR housing OR labor) sourcelang:english', "local"),
-
-    # --- International affairs / IR ---
-    ('(Sahel OR "West Africa") (coup OR insurgency OR security) sourcelang:english', "intl"),
-    ('European Union election government sourcelang:english', "intl"),
-    ('(China OR Taiwan OR "South China Sea") policy sourcelang:english', "intl"),
-    ('international labor movement "trade union" sourcelang:english', "intl"),
+    # --- Bay Area local ---
+    ('("East Bay" OR Oakland OR Berkeley OR "San Francisco") (city council OR housing OR labor) sourcelang:english', "ca"),
 ]
 # ---------------------------------------------------------------------------
 

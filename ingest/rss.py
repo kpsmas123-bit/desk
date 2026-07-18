@@ -41,34 +41,17 @@ from supabase import create_client
 # short tag ("ca" for California, "national" for nationwide). Add, remove, or
 # change these freely — just keep the same three-part shape and the quotes.
 FEEDS = [
-    # --- National (clean feeds that still work) ---
-    ("NPR Top",        "https://feeds.npr.org/1001/rss.xml",            "national"),
-    ("NPR Politics",   "https://feeds.npr.org/1014/rss.xml",            "national"),
-    ("Politico",       "https://rss.politico.com/politics-news.xml",    "national"),
-    ("The Hill",       "https://thehill.com/news/feed/",                "national"),
-    ("The Intercept",  "https://theintercept.com/feed/?lang=en",        "national"),
-    ("The Conversation US","https://theconversation.com/us/articles.atom","national"),
-
-    # --- International ---
-    ("Guardian World", "https://www.theguardian.com/world/rss",         "intl"),
-    ("NPR World",      "https://feeds.npr.org/1004/rss.xml",            "intl"),
-    ("Al Jazeera",     "https://www.aljazeera.com/xml/rss/all.xml",     "intl"),
-    ("Le Monde EN",    "https://www.lemonde.fr/en/international/rss_full.xml","intl"),
-
-    # --- California ---
+    # --- California news ---
     ("CalMatters",     "https://calmatters.org/feed/",                  "ca"),
-    ("KQED News",      "https://www.kqed.org/news/feed",                "ca"),   # corrected URL
+    ("KQED News",      "https://www.kqed.org/news/feed",                "ca"),
     ("LA Times CA",    "https://www.latimes.com/california/rss2.0.xml", "ca"),
+    ("Berkeleyside",   "https://www.berkeleyside.org/feed",             "ca"),
+    ("Mission Local",  "https://missionlocal.org/feed/",                "ca"),
+    ("SF Standard",    "https://sfstandard.com/feed/",                  "ca"),
 
-    # --- Local Bay ---
-    ("Berkeleyside",   "https://www.berkeleyside.org/feed",             "local"),
-    ("Mission Local",  "https://missionlocal.org/feed/",                "local"),
-    ("SF Standard",    "https://sfstandard.com/feed/",                  "local"),
-
-    # --- Labor (national + CA) ---
-    ("Labor Notes",    "https://labornotes.org/feed",                   "national"),
-    ("In These Times", "https://inthesetimes.com/rss",                  "national"),
-    ("AFL-CIO Blog",   "https://aflcio.org/feeds/blog",                 "national"),
+    # --- California labor ---
+    ("Labor Notes",    "https://labornotes.org/feed",                   "ca"),
+    ("In These Times", "https://inthesetimes.com/rss",                  "ca"),
 ]
 # ---------------------------------------------------------------------------
 
