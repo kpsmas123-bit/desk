@@ -66,9 +66,7 @@ PRICE_PER_M_OUTPUT = 5.0   # $5 per million output tokens
 BEAT_KEYWORDS = {
     "ca":       ["california", "legislature", "assembly", "newsom", "sacramento", "ballot"],
     "labor":    ["union", "strike", "workers", "organizing", "teamsters", "seiu", "uaw", "nlrb", "upte", "labor"],
-    "national": ["congress", "senate", "supreme court", "biden", "election", "midterm"],
     "local":    ["bay area", "oakland", "berkeley", "san francisco", "east bay"],
-    "intl":     ["sahel", "european union", "china", "taiwan", "coup", "trade union"],
 }
 
 # Flatten all the keyword lists into one set for a quick "does it match anything?" check.
@@ -77,11 +75,11 @@ ALL_KEYWORDS = [term for terms in BEAT_KEYWORDS.values() for term in terms]
 
 # The exact instructions we give the AI. Written once here so it's easy to read.
 SYSTEM_PROMPT = (
-    "You classify news items for a personal political reader focused on California "
-    "legislature & labor, national politics & labor, the SF Bay Area, and international "
-    "affairs. Return ONLY a JSON array, one object per item, no prose. For each item:\n"
-    "  relevance_score: 0-10, how relevant to those beats (0 = off-topic noise).\n"
-    "  topics: array of matching beats from [ca, labor, national, local, intl].\n"
+    "You classify news items for a California political and labor news reader. "
+    "The beats are: California legislature & policy, California labor & unions, "
+    "and Bay Area local politics. Return ONLY a JSON array, one object per item, no prose. For each item:\n"
+    "  relevance_score: 0-10, how relevant to those CA beats (0 = off-topic noise).\n"
+    "  topics: array of matching beats from [ca, labor, local].\n"
     "  lean: one of left|center|right|unrated. Use a non-unrated value ONLY if the "
     "outlet's political lean is well established; otherwise 'unrated'.\n"
     "  is_academic: true ONLY for academic/research/journal sources, else false.\n"
