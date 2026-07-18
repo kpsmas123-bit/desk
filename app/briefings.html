@@ -464,6 +464,19 @@
   }
   .user-bar .signout-btn:hover { opacity: 1; }
 
+  .section-header {
+    grid-column: 1 / -1;
+    font-family: var(--label-font);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding: 18px 0 6px;
+    border-bottom: 1px solid var(--hair);
+    margin-bottom: -4px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; animation: none !important; }
   }
@@ -474,7 +487,7 @@
 <nav>
   <a class="brand" href="index.html">DESK</a>
   <ul>
-    <li><a class="nav-link" href="index.html">Threads</a></li>
+    <li><a class="nav-link" href="index.html">News Feed</a></li>
     <li><a class="nav-link" href="briefings.html" style="color:var(--gold);opacity:1">Thread Library</a></li>
   </ul>
 </nav>
@@ -738,18 +751,23 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
       var grid = '';
 
-      pendingTiles.forEach(function (t) {
-        grid += '<div class="tile" style="opacity:.7">' +
-          archBadge(t.archetype) +
-          '<div class="tile-title">' + esc(t.title) + '</div>' +
-          (t.description ? '<p class="tile-status">' + esc(t.description) + '</p>' : '') +
-          '<div class="tile-footer">' +
-            '<span class="tile-pill gold">' + esc(t.status) + '</span>' +
-          '</div>' +
-        '</div>';
-      });
+      // --- Pending section ---
+      if (pendingTiles.length) {
+        grid += '<div class="section-header">Pending</div>';
+        pendingTiles.forEach(function (t) {
+          grid += '<div class="tile" style="opacity:.7">' +
+            archBadge(t.archetype) +
+            '<div class="tile-title">' + esc(t.title) + '</div>' +
+            (t.description ? '<p class="tile-status">' + esc(t.description) + '</p>' : '') +
+            '<div class="tile-footer">' +
+              '<span class="tile-pill gold">' + esc(t.status) + '</span>' +
+            '</div>' +
+          '</div>';
+        });
+      }
 
-      grid += list.map(function (b) {
+      // --- Group briefings by archetype ---
+      function briefingTile(b) {
         var ndp = b.next_decision_point;
         var gaps = arr(b.gaps);
         var footer = [];
@@ -765,7 +783,29 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
           '<div class="tile-date">As of ' + esc(fmtDate(b.as_of)) + '</div>' +
           '<div class="tile-footer">' + footer.join('') + '</div>' +
         '</div>';
-      }).join('');
+      }
+
+      var groups = {};
+      list.forEach(function (b) {
+        var key = (b.archetype || '').toUpperCase().trim() || '';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(b);
+      });
+
+      // Sort archetype keys alphabetically, with empty ('General') last
+      var archKeys = Object.keys(groups).sort(function (a, b) {
+        if (!a) return 1;
+        if (!b) return -1;
+        return a.localeCompare(b);
+      });
+
+      archKeys.forEach(function (key) {
+        var label = key || 'General';
+        grid += '<div class="section-header">' + esc(label) + '</div>';
+        groups[key].forEach(function (b) {
+          grid += briefingTile(b);
+        });
+      });
 
       var gridEl = contentEl.querySelector('.topic-grid');
       if (gridEl) gridEl.innerHTML = grid;
